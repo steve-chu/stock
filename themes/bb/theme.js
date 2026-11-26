@@ -144,6 +144,36 @@
       setTimeout(() => finish(d), 1100);
     }, { once: true });
   }
-  splash(false);
+  // ---- 禮物包裝：用瀏覽器打開只看到禮物頁，加到主畫面打開才拆得開 ----
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  const preview = /[?&]preview=1/.test(location.search);   // 自己在瀏覽器預覽用
+  const inApp = /Line\/|FBAN|FBAV|Instagram|Messenger|MicroMessenger/i.test(navigator.userAgent);
+  if (!standalone && !preview) {
+    const SHARE = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const g = document.createElement('div');
+    g.className = 'bb-gift';
+    g.innerHTML = `${SPARK}
+      <div class="bb-gift-box">🎁</div>
+      <h1>A gift for you, Baby 💗</h1>
+      <p class="bb-gift-sub">加到主畫面才能拆開哦</p>
+      ${inApp ? `<ol class="bb-steps">
+          <li>先用 <b>Safari</b> 打開這個連結<br><small>點右上角 ⋯ →「用 Safari 開啟」，或按下面複製連結，貼到 Safari</small></li>
+          <li>點下面的 分享 ${SHARE}</li><li>選「<b>加入主畫面</b>」</li></ol>
+          <button type="button" class="bb-copy">複製連結</button>`
+        : `<ol class="bb-steps">
+          <li>點畫面下方的 分享 ${SHARE}<br><small>看不到的話，先點 ⋯</small></li>
+          <li>往下滑，選「<b>加入主畫面</b>」</li>
+          <li>回到主畫面，點 <b>貝貝看盤台</b> 拆禮物 🎀</li></ol>`}
+      ${CAT.replace('class="bb-cat"', 'class="bb-gift-cat" width="72" height="72"')}`;
+    document.body.append(g);
+    document.body.classList.add('bb-gifted');
+    g.querySelector('.bb-copy')?.addEventListener('click', async e => {
+      const url = location.origin + location.pathname;
+      try { await navigator.clipboard.writeText(url); e.target.textContent = '已複製 ✓'; }
+      catch { e.target.textContent = url; }
+    });
+  } else {
+    splash(false);
+  }
   new MutationObserver(fixBack).observe(document.querySelector('.top'), { childList: true, subtree: true, characterData: true });
 })();
