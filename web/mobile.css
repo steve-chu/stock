@@ -183,3 +183,7 @@ body.m-stock .chart-col > .chart-wrap { flex: 1 1 0 !important; min-height: 120p
 .m-hid li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .m-hid small { color: var(--faint); }
 .m-hid button { border: 1px solid var(--line); background: none; color: var(--accent); border-radius: 8px; padding: 4px 12px; min-height: 34px; }
+
+/* 往右滑：黃色提示，放開就切換 ★ */
+.wl li.m-star-hint { background: linear-gradient(90deg, rgba(234,179,8,.35), transparent 70%); }
+.wl li.m-star-hint .nm b::before { content: "★ "; color: #eab308; }

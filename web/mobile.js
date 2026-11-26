@@ -132,10 +132,32 @@
     if (!sLi) return;
     const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dy) > 24 && !swiping) { sLi = null; return; }   // 是上下捲動
-    if (dx < -40) { swiping = true; closeSwipes(sLi); sLi.classList.add('m-swiped'); }
-    else if (dx > 40) { swiping = true; sLi.classList.remove('m-swiped'); }
+    if (dx < -40) { swiping = true; closeSwipes(sLi); sLi.classList.remove('m-star-hint'); sLi.classList.add('m-swiped'); }
+    else if (dx > 40) {
+      swiping = true;
+      if (sLi.classList.contains('m-swiped')) { sLi.classList.remove('m-swiped'); sLi.dataset.closing = 1; }
+      else if (!sLi.dataset.closing) sLi.classList.toggle('m-star-hint', dx > 70);   // 往右滑夠遠 → 放開就切換 ★
+    }
   }, { passive: true });
-  wl.addEventListener('touchend', () => { if (swiping) wl.dataset.justSwiped = Date.now(); sLi = null; }, { passive: true });
+  wl.addEventListener('touchend', () => {
+    if (swiping) wl.dataset.justSwiped = Date.now();
+    if (sLi?.classList.contains('m-star-hint')) { sLi.classList.remove('m-star-hint'); toggleStar(sLi.dataset.id); }
+    if (sLi) delete sLi.dataset.closing;
+    sLi = null;
+  }, { passive: true });
+
+  // ★ 長期名單：往右滑加入／拿掉（只影響這支手機）
+  const reloadList = () => { window.kpQuiet = true; $('refresh-all').click(); };
+  const toggleStar = async id => {
+    if (!window.kpStar) return;
+    const q = (window.kpAllQuotes?.() || []).find(x => x.stock_id === id) || {};
+    const name = `${q.name || ''} ${id}`.trim();
+    const on = window.kpStar.is(id);
+    if (on && !await dialog(`把 ${name} 移出長期名單？`, '拿掉 ★ 後，這檔不再當成長期好股票，策略總表不會再給買點。只影響這支手機。', '移出', true)) return;
+    window.kpStar.set(id, !on);
+    reloadList();
+    setTimeout(() => { try { toast(on ? `已把 ${name} 移出長期名單` : `★ 已把 ${name} 加入長期名單`); } catch {} }, 450);
+  };
 
   let confirmed = null;
   wl.addEventListener('click', async e => {
@@ -202,7 +224,7 @@
   // 清單下方說明
   const note = document.createElement('p');
   note.className = 'm-note';
-  note.textContent = '往左滑可以從清單移除（只影響這支手機）。資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
+  note.textContent = '往右滑加入／移出 ★ 長期名單，往左滑從清單移除（都只影響這支手機）。資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
   document.querySelector('.watch').append(note);
 
   // 狀態列：補上「資料更新時間」

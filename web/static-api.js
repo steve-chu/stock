@@ -90,6 +90,16 @@
   const hidden = () => { try { return JSON.parse(localStorage.getItem(HK) || '[]'); } catch { return []; } };
   const setHidden = h => localStorage.setItem(HK, JSON.stringify([...new Set(h)]));
   window.kpHidden = { all: hidden, set: setHidden };
+  // ★ 長期名單：每支手機自己決定（只記和預設不同的）
+  const SK = 'kp.m.star';
+  const stars = () => { try { return JSON.parse(localStorage.getItem(SK) || '{}'); } catch { return {}; } };
+  let baseCore = {};   // 預設（stocks.txt 那邊）的 ★
+  const isCore = sid => { const o = stars(); return sid in o ? o[sid] : !!baseCore[sid]; };
+  const flipped = sid => isCore(sid) !== !!baseCore[sid];
+  window.kpStar = {
+    is: isCore,
+    set(sid, on) { const o = stars(); if (on === !!baseCore[sid]) delete o[sid]; else o[sid] = on; localStorage.setItem(SK, JSON.stringify(o)); },
+  };
   let allQuotes = [];
   window.kpAllQuotes = () => allQuotes;
 
@@ -102,8 +112,9 @@
 
   async function watchlist() {
     const w = await load('watchlist.json'), held = heldSet(), hid = new Set(hidden());
-    allQuotes = w.quotes;
-    const quotes = w.quotes.filter(q => !hid.has(q.stock_id)).map(q => {
+    w.quotes.forEach(q => { baseCore[q.stock_id] = q.core; });
+    allQuotes = w.quotes.map(q => (flipped(q.stock_id) ? { ...q, ...(q.alt || {}), core: !q.core } : q));
+    const quotes = allQuotes.filter(q => !hid.has(q.stock_id)).map(q => {
       const h = held.has(q.stock_id);
       return { ...q, held: h, heat: h ? q._heat : null, crash: h ? q._crash : null, cooling: h ? !!q._cooling : false };
     });
@@ -118,13 +129,16 @@
     if (p === 'refresh') {
       bust = Date.now();
       const w = await watchlist();
-      return json({ ...w, checked: w.quotes.length, fetched: 0, updated: [], failed: [], latest: w.quotes.length });
+      const quiet = window.kpQuiet; window.kpQuiet = false;
+      return json({ ...w, checked: w.quotes.length, fetched: 0, updated: [], failed: [], latest: quiet ? 0 : w.quotes.length });
     }
     if ((m = p.match(/^stock\/([^/]+)$/))) {
       if (q.get('as_of')) return fail('手機版沒有「回看」，要用的話請開電腦版');
       if (q.get('force')) bust = Date.now();
       const sid = decodeURIComponent(m[1]);
-      const d = await load(`stock/${sid}.json`);
+      let d;
+      if (flipped(sid)) { try { d = await load(`stock/${sid}.alt.json`); } catch {} }
+      if (!d) d = await load(`stock/${sid}.json`);
       const mine = trades().filter(t => t.stock_id === sid);
       d.portfolio = compute(sid, mine, d.bars[d.bars.length - 1].close, d.pf_levels || []);
       return json(d);

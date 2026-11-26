@@ -88,6 +88,20 @@ def _cap(stock_id, trades, close, levels, tick_fn):
 portfolio.compute = _cap
 core.portfolio.compute = _cap
 
+# 長期名單（★）：手機上每個人可以自己加減，所以每檔都多算一份「★ 相反」的版本
+FLIP, ALT_Q = set(), {}
+_core_get = ds.core_get
+
+
+def _core_get_flip(stock_id):
+    c = _core_get(stock_id)
+    if stock_id in FLIP:
+        c = {"core": not c["core"], "reason": c["reason"] if not c["core"] else "", "invalidation": c["invalidation"] if not c["core"] else ""}
+    return c
+
+
+ds.core_get = _core_get_flip
+
 
 def main():
     t0 = time.time()
@@ -105,6 +119,19 @@ def main():
     ok, failed = [], []
     for sid in ids:
         try:
+            # 先算「長期名單相反」的版本（手機上自己加／拿掉 ★ 時用），再算正常版本，
+            # 讓資料庫最後存的是正常版本的策略
+            FLIP.add(sid)
+            try:
+                alt = core.stock(sid)
+                alt["pf_levels"] = _levels.get(sid, [])
+                alt.pop("prefs", None)
+                dump(f"stock/{sid}.alt.json", alt)
+                ALT_Q[sid] = core._quote(sid, True)
+            except Exception as e:
+                print("  反向版本失敗（不影響）", sid, e)
+            finally:
+                FLIP.discard(sid)
             r = core.stock(sid)
             r["pf_levels"] = _levels.get(sid, [])
             r.pop("prefs", None)
@@ -127,6 +154,10 @@ def main():
         q.update({"core": sid in core_ids, "cyclical": ds.meta_get(f"category:{sid}") == "cyclical",
                   "_heat": q.pop("heat", None), "_crash": q.pop("crash", None), "_cooling": q.pop("cooling", False)})
         q["held"] = False
+        a = ALT_Q.get(sid)
+        if a:   # ★ 相反時，清單上會變的欄位
+            q["alt"] = {"buy": a.get("buy"), "next_buy": a.get("next_buy"), "_heat": a.get("heat"),
+                        "_crash": a.get("crash"), "_cooling": a.get("cooling", False)}
         quotes.append(q)
     dump("watchlist.json", {"quotes": quotes})
 
