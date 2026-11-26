@@ -26,7 +26,7 @@ body {
 .card { border-radius: 18px; }
 .wl { margin: 0 !important; display: grid; gap: 8px; }
 .wl li { border-radius: 16px; }
-.wl li.active { background: rgba(255,255,255,.85) !important; }
+.wl li.active { background: var(--glass) !important; }   /* 手機上不標「上一次看的那檔」，每列一樣 */
 .tabs { border-radius: 0; border-left: 0 !important; border-right: 0 !important; box-shadow: none; }
 .tabs button.on { border-bottom-color: #f06aab; color: var(--ink); }
 .toast { color: var(--ink) !important; border-radius: 14px !important; }
