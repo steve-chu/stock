@@ -1,6 +1,8 @@
 /* 手機版：兩個畫面 —「自選股清單」和「個股」。電腦版的樣式不動，這裡只做覆蓋。 */
 :root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); }
-html, body { height: auto; }
+html, body { height: auto; width: 100%; overflow-x: hidden; }
+html { touch-action: pan-x pan-y; }  /* 擋掉兩指縮放整頁、連點放大 */
+#chart, .m-split { touch-action: none; }
 body { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; padding-bottom: var(--safe-b); }
 
 .top { position: sticky; top: 0; z-index: 20; height: auto; min-height: calc(46px + var(--safe-t));
@@ -127,3 +129,32 @@ body.m-stock.v-text .side { flex-basis: 100%; border-top: 0; }
   body.m-stock.v-text .side { flex-basis: 100%; border-left: 0; }
   body.m-stock .tabs button { min-height: 38px; padding: 8px 4px 6px; }
 }
+
+
+/* 表格：一律不換行，太寬就整張等比縮小到看得完（mobile.js 算比例） */
+.analysis table th, .analysis table td { white-space: nowrap !important; }
+.analysis table { width: auto; min-width: 100%; }
+
+/* 中間可拖的分隔線 */
+.m-split { display: none; flex: none; position: relative; background: var(--panel); }
+body.m-stock .m-split { display: block; height: 14px; cursor: row-resize; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.m-split::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 4px; margin: -2px 0 0 -22px; border-radius: 4px; background: var(--faint); }
+.m-split.drag::after { background: var(--accent); }
+body.m-stock.v-chart .m-split, body.m-stock.v-text .m-split { display: none; }
+body.m-stock .side { border-top: 0 !important; }
+body.m-stock .chart-col { flex: 0 0 calc(var(--m-r, .56) * 100% - 7px) !important; }
+body.m-stock .side { flex: 1 1 0 !important; }
+body.m-stock.v-chart .chart-col { flex: 1 1 auto !important; }
+body.m-stock.v-text .side { flex: 1 1 auto !important; }
+@media (orientation: landscape) and (max-height: 600px) {
+  body.m-stock .m-split { height: auto; width: 14px; cursor: col-resize; border: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+  .m-split::after { width: 4px; height: 44px; margin: -22px 0 0 -2px; }
+  body.m-stock .chart-col { flex: 0 0 calc(var(--m-r, .6) * 100% - 7px) !important; }
+  body.m-stock .side { border-left: 0 !important; }
+}
+/* 回測表欄位多：允許在空白處換行，但中文詞不拆成一字一行 */
+.analysis .tbl.bt th, .analysis .tbl.bt td { white-space: normal !important; word-break: keep-all; overflow-wrap: normal; }
+.analysis .tbl.bt td:first-child, .analysis .tbl.bt th:first-child { white-space: nowrap !important; }
+/* K 線區被拉小時：標題、按鈕列不被壓扁，只縮圖表本身 */
+body.m-stock .chart-col > * { flex-shrink: 0; }
+body.m-stock .chart-col > .chart-wrap { flex: 1 1 0 !important; min-height: 120px !important; }

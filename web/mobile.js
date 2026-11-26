@@ -47,8 +47,68 @@
   seg.addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
   let saved = 'split'; try { saved = localStorage.getItem('kp.m.mode') || 'split'; } catch {}
   setMode(saved);
-  window.addEventListener('orientationchange', fixPanes);
-  matchMedia('(orientation: landscape)').addEventListener?.('change', fixPanes);
+
+  // 擋掉 iOS 兩指縮放整個畫面（K 線自己的兩指縮放照常）
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  let lastTap = 0;
+  document.addEventListener('touchend', e => {   // 連點兩下不放大
+    const now = Date.now();
+    if (now - lastTap < 300 && !e.target.closest('input,textarea,select')) e.preventDefault();
+    lastTap = now;
+  }, { passive: false });
+
+  // 中間分隔線：拖拉調整 K 線和看板的比例（直放、橫放各自記住）
+  const layout = document.querySelector('.layout');
+  const split = document.createElement('div');
+  split.className = 'm-split'; split.setAttribute('role', 'separator'); split.title = '拖拉調整比例，點兩下回到預設';
+  document.querySelector('.side').before(split);
+  const land = () => matchMedia('(orientation: landscape) and (max-height: 600px)').matches;
+  const rKey = () => 'kp.m.ratio.' + (land() ? 'L' : 'P');
+  const applyRatio = () => {
+    let r = null; try { r = parseFloat(localStorage.getItem(rKey())); } catch {}
+    if (r > 0) document.documentElement.style.setProperty('--m-r', r);
+    else document.documentElement.style.removeProperty('--m-r');
+  };
+  applyRatio();
+  let dragging = false;
+  split.addEventListener('pointerdown', e => {
+    dragging = true; split.classList.add('drag'); split.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  split.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const b = layout.getBoundingClientRect();
+    let r = land() ? (e.clientX - b.left) / b.width : (e.clientY - b.top) / b.height;
+    r = land() ? Math.min(.8, Math.max(.35, r)) : Math.min(.85, Math.max(.45, r));   // K 線區至少要留得下圖
+    document.documentElement.style.setProperty('--m-r', r.toFixed(3));
+  });
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false; split.classList.remove('drag');
+    try { localStorage.setItem(rKey(), getComputedStyle(document.documentElement).getPropertyValue('--m-r').trim()); } catch {}
+    fixPanes(); fitTables();
+  };
+  split.addEventListener('pointerup', endDrag);
+  split.addEventListener('pointercancel', endDrag);
+  split.addEventListener('dblclick', () => { try { localStorage.removeItem(rKey()); } catch {} applyRatio(); fixPanes(); fitTables(); });
+
+  // 表格太寬：整張等比縮小到看得完（最小縮到 6 成，再寬才左右滑）
+  const fitTables = () => {
+    document.querySelectorAll('.analysis table').forEach(t => {
+      t.style.zoom = '';
+      const box = t.parentElement, avail = box.clientWidth, w = t.scrollWidth;
+      if (avail > 0 && w > avail + 1) t.style.zoom = Math.max(.6, (avail - 2) / w).toFixed(3);
+    });
+  };
+  let fitTimer;
+  const fitSoon = () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTables, 60); };
+  new MutationObserver(fitSoon).observe(document.querySelector('.analysis'), { childList: true, subtree: true });
+  document.querySelector('.analysis').addEventListener('toggle', fitSoon, true);
+
+  // 轉向：重新套用比例、重新量圖表和表格；也把被 iOS 留下的縮放、捲動歸零
+  const onRotate = () => { applyRatio(); window.scrollTo(0, 0); fixPanes(); setTimeout(fitTables, 120); setTimeout(fitTables, 500); };
+  window.addEventListener('orientationchange', onRotate);
+  matchMedia('(orientation: landscape)').addEventListener?.('change', onRotate);
+  window.addEventListener('resize', fitSoon);
 
   // 點清單任一檔 → 進個股畫面（電腦版的程式會負責載入那檔）
   $('watchlist').addEventListener('click', e => {

@@ -173,7 +173,7 @@ def write_index():
     html = open(os.path.join(CORE, "static", "index.html"), encoding="utf-8").read()
     html = re.sub(r"\?v=[0-9.]+", "?v=" + v, html)
     html = html.replace('content="width=device-width, initial-scale=1"',
-                        'content="width=device-width, initial-scale=1, viewport-fit=cover"')
+                        'content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"')
     html = html.replace("</head>", MOBILE_HEAD.format(v=v), 1)
     html = html.replace('<script src="app.js', f'<script src="static-api.js?v={v}"></script>\n<script src="app.js', 1)
     html = html.replace("</body>", f'<script src="mobile.js?v={v}"></script>\n</body>', 1)
