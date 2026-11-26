@@ -95,3 +95,26 @@ body.m-stock .bb-avatar { display: none; }
   .bb-stage.two { grid-auto-flow: column; align-items: center; gap: 24px; }
   .bb-photo { max-height: 78vh; width: auto; }
 }
+
+/* ---- Loyalty Check ---- */
+.bb-q { position: absolute; left: 50%; top: calc(12% + env(safe-area-inset-top)); transform: translateX(-50%); width: min(86vw, 360px);
+  background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid #fff;
+  border-radius: 22px; padding: 18px 18px 14px; box-shadow: 0 10px 30px rgba(214,120,170,.22); display: grid; justify-items: center; gap: 4px; }
+.bb-q h2 { margin: 2px 0 0; font-size: 24px; font-weight: 800; background: linear-gradient(90deg, #e2508f, #a35bd6);
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bb-q p { margin: 0; font-size: 17px; line-height: 1.45; color: var(--ink); font-weight: 600; }
+.bb-q-msg { min-height: 24px; margin-top: 6px; font-size: 15px; font-weight: 700; color: #d9488e; }
+.bb-q-msg.pop { animation: bbPop .35s ease; }
+.bb-q-msg.mad { color: #e11d48; font-size: 18px; animation: bbShake .5s ease; }
+@keyframes bbPop { 0% { transform: scale(.6); } 70% { transform: scale(1.12); } }
+@keyframes bbShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.bb-yes, .bb-no { position: absolute; left: -999px; top: -999px; border: 0; border-radius: 99px; font-weight: 800; white-space: nowrap;
+  padding: 12px 20px; font-size: 16px; line-height: 1.25; transform-origin: center; touch-action: none;
+  transition: left .45s cubic-bezier(.2,.9,.3,1.2), top .45s cubic-bezier(.2,.9,.3,1.2), transform .45s ease, opacity .4s ease; }
+.bb-splash:not(.bb-ready) .bb-yes, .bb-splash:not(.bb-ready) .bb-no { visibility: hidden; }
+.bb-yes { background: var(--pink-grad); color: #fff; box-shadow: 0 8px 20px rgba(240,106,171,.45); z-index: 2; }
+.bb-no { background: rgba(255,255,255,.8); color: #7a5376; border: 1px solid #f2c4dc; font-size: 13.5px; font-weight: 700; white-space: normal;
+  text-align: center; max-width: 62vw; box-shadow: 0 4px 12px rgba(200,120,170,.18); }
+.bb-no.gone { opacity: 0; transform: scale(.2) rotate(-25deg); pointer-events: none; }
+.bb-fly { position: absolute; font-size: 26px; pointer-events: none; animation: bbFly 1.1s ease-out forwards; }
+@keyframes bbFly { to { transform: translateY(-46vh) scale(1.4); opacity: 0; } }

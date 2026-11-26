@@ -241,12 +241,20 @@
 
   // 自動更新：手機會把首頁暫存起來，打開時比對伺服器上的版本，不同就換新的
   const myVer = document.querySelector('meta[name="kp-ver"]')?.content;
+  // 這次載入是不是「自動更新」造成的（主題的開場用來判斷要不要再播）；網址上的 ?v= 用完就清掉
+  try {
+    const t = +localStorage.getItem('kp.m.autoReload') || 0;
+    window.KP_AUTO_RELOADED = Date.now() - t < 20000;
+    localStorage.removeItem('kp.m.autoReload');
+  } catch {}
+  if (/[?&]v=/.test(location.search)) history.replaceState(history.state, '', location.pathname);
   const checkVer = async () => {
     try {
       const r = await fetch((window.KP_DATA || 'data/') + 'version.json?t=' + Date.now(), { cache: 'no-store' });
       const { v } = await r.json();
       if (!myVer || !v || v === myVer || sessionStorage.getItem('kp.reloaded') === v) return;
       sessionStorage.setItem('kp.reloaded', v);
+      try { localStorage.setItem('kp.m.autoReload', String(Date.now())); } catch {}
       location.replace(location.pathname + '?v=' + v);
     } catch {}
   };
