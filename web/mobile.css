@@ -193,3 +193,27 @@ body.m-stock .chart-col > .chart-wrap { flex: 1 1 0 !important; min-height: 120p
 .wl li.m-drag { position: relative; z-index: 5; transition: none !important; background: var(--panel-2);
   box-shadow: 0 12px 28px rgba(0,0,0,.35); border-radius: 12px; }
 .wl.m-dragging li:not(.m-drag) { transition: transform .15s; }
+
+/* ＋ 新增 */
+.watch-head { display: flex !important; align-items: center; justify-content: space-between; }
+.m-add { border: 1px solid var(--line); background: var(--panel-2); color: var(--accent); border-radius: 99px; padding: 5px 14px; font-size: 14px; font-weight: 700; min-height: 34px; }
+.m-sheet { align-items: start; padding-top: calc(60px + env(safe-area-inset-top)); }
+.m-sheet .m-dlg-box { width: min(420px, 100%); }
+.m-search { width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-bottom: 8px; }
+.m-results { list-style: none; margin: 0 0 12px; padding: 0; max-height: 46vh; overflow-y: auto; }
+.m-results li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.m-results small { color: var(--faint); font-size: 12px; }
+.m-results button { border: 0; border-radius: 8px; padding: 6px 14px; min-height: 34px; font-weight: 700; color: #fff; background: var(--accent); flex: none; }
+.m-results button:disabled { opacity: .6; }
+.m-results .m-in { color: var(--faint); font-size: 13px; flex: none; }
+.m-results .m-hint { color: var(--faint); justify-content: center; border: 0; font-size: 13px; }
+.m-dlg-btns.one { grid-template-columns: 1fr; }
+/* 底部「下載中」 */
+.m-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 60;
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 9px 16px; border-radius: 99px;
+  background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 13.5px; color: var(--ink); }
+.m-pill[hidden] { display: none; }
+.m-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-spin { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: mSpin .8s linear infinite; }
+@keyframes mSpin { to { transform: rotate(360deg); } }
+body.m-stock .m-pill { bottom: calc(10px + env(safe-area-inset-bottom)); }

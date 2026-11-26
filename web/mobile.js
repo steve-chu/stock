@@ -248,9 +248,114 @@
       return;
     }
     if (wl.querySelector('li.m-swiped')) { closeSwipes(); e.stopPropagation(); e.preventDefault(); return; }
-    if (e.target.closest('li[data-id]')) show('stock', true);   // 點一檔 → 進個股畫面
+    const li = e.target.closest('li[data-id]');
+    if (li && window.kpPending?.[li.dataset.id]) {   // 還在下載：先提示，不要進去看空白
+      e.stopPropagation(); e.preventDefault();
+      try { toast('還在下載中，好了會自動出現'); } catch {}
+      return;
+    }
+    if (li) show('stock', true);   // 點一檔 → 進個股畫面
   }, true);
 
+  // ---------- ＋ 新增股票（有中繼站才有） ----------
+  const PK = 'kp.m.pending';
+  const pendingIds = () => { try { return JSON.parse(localStorage.getItem(PK) || '[]'); } catch { return []; } };
+  const setPending = a => { try { localStorage.setItem(PK, JSON.stringify([...new Set(a)])); } catch {} };
+  const pill = document.createElement('div');
+  pill.className = 'm-pill'; pill.hidden = true; pill.setAttribute('role', 'status');
+  document.body.append(pill);
+  const nameOf = async id => ((await window.kpNames?.()) || []).find(x => x[0] === id)?.[1] || '';
+  const renderPill = async () => {
+    const ids = pendingIds();
+    pill.hidden = !ids.length;
+    if (!ids.length) return;
+    const names = await Promise.all(ids.map(async id => `${id} ${await nameOf(id)}`.trim()));
+    pill.innerHTML = `<i class="m-spin"></i><span>下載中：${names.join('、')}</span>`;
+  };
+  let pollT = null;
+  const poll = async () => {
+    clearTimeout(pollT);
+    const ids = pendingIds();
+    if (!ids.length || !window.kpRelay) { renderPill(); return; }
+    try {
+      const r = await (await fetch(`${window.kpRelay}/status?ids=${ids.join(',')}`, { cache: 'no-store' })).json();
+      let changed = false;
+      for (const id of ids) {
+        const j = r.jobs?.[id] || {};
+        if (j.status === 'ready') {
+          setPending(pendingIds().filter(x => x !== id)); delete window.kpPending[id]; changed = true;
+          try { toast(`${id} ${await nameOf(id)} 下載好了 ✓`); } catch {}
+        } else if (j.status === 'error') {
+          setPending(pendingIds().filter(x => x !== id)); delete window.kpPending[id]; changed = true;
+          window.kpAdded.set(window.kpAdded.all().filter(x => x !== id));
+          try { toast(`${id}：${j.error || '新增失敗'}`); } catch {}
+        } else if (j.status === 'none') {   // 中繼站沒有這筆（例如重設過）→ 重新送一次
+          fetch(`${window.kpRelay}/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {});
+        }
+      }
+      if (changed) reloadList();
+    } catch {}
+    renderPill();
+    if (pendingIds().length) pollT = setTimeout(poll, 4000);
+  };
+  const addStock = async (id, btn) => {
+    id = id.toUpperCase();
+    const shown = [...wl.querySelectorAll('li[data-id]')].some(li => li.dataset.id === id);
+    if (shown) { try { toast(`${id} 已經在清單裡`); } catch {} return; }
+    window.kpHidden?.set(window.kpHidden.all().filter(x => x !== id));
+    window.kpAdded.set([...window.kpAdded.all(), id]);
+    if (window.kpPool?.has(id)) {   // 每天的資料裡本來就有 → 馬上出現
+      reloadList(); try { toast(`已加入 ${id} ${await nameOf(id)}`); } catch {} return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = '送出中…'; }
+    try {
+      const r = await (await fetch(`${window.kpRelay}/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })).json();
+      if (r.error) throw new Error(r.error);
+      if (r.status !== 'ready') { window.kpPending[id] = '下載中…'; setPending([...pendingIds(), id]); }
+      if (btn) btn.textContent = r.status === 'ready' ? '已加入 ✓' : '下載中…';
+      reloadList(); poll();
+    } catch (e) {
+      window.kpAdded.set(window.kpAdded.all().filter(x => x !== id));
+      if (btn) { btn.disabled = false; btn.textContent = '加入'; }
+      try { toast('新增失敗：' + e.message); } catch {}
+    }
+  };
+  if (window.kpRelay) {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'm-add'; addBtn.textContent = '＋ 新增';
+    document.querySelector('.watch-head').append(addBtn);
+    addBtn.addEventListener('click', async () => {
+      const d = document.createElement('div');
+      d.className = 'm-dlg m-sheet';
+      d.innerHTML = `<div class="m-dlg-box"><h3>新增股票</h3>
+        <input class="m-search" type="search" inputmode="search" placeholder="代號或名稱，例如 2603、長榮" autocomplete="off">
+        <ul class="m-results"><li class="m-hint">打字搜尋，可以連續加好幾檔</li></ul>
+        <div class="m-dlg-btns one"><button type="button" data-close>完成</button></div></div>`;
+      document.body.append(d);
+      const inp = d.querySelector('.m-search'), ul = d.querySelector('.m-results');
+      const names = await window.kpNames();
+      const draw = () => {
+        const q = inp.value.trim().toUpperCase();
+        if (!q) { ul.innerHTML = '<li class="m-hint">打字搜尋，可以連續加好幾檔</li>'; return; }
+        const shown = new Set([...wl.querySelectorAll('li[data-id]')].map(li => li.dataset.id));
+        const hits = names.filter(([id, nm]) => id.startsWith(q) || nm.toUpperCase().includes(q)).slice(0, 30);
+        ul.innerHTML = hits.map(([id, nm, ind]) => {
+          const st = shown.has(id) ? '<span class="m-in">已在清單</span>' : pendingIds().includes(id) ? '<span class="m-in">下載中…</span>'
+            : `<button type="button" data-add="${id}">加入</button>`;
+          return `<li><span><b>${nm}</b> <small>${id}${ind ? ' · ' + ind : ''}</small></span>${st}</li>`;
+        }).join('') || '<li class="m-hint">找不到，換個關鍵字試試</li>';
+      };
+      inp.addEventListener('input', draw);
+      d.addEventListener('click', e => {
+        const b = e.target.closest('[data-add]');
+        if (b) { addStock(b.dataset.add, b); return; }
+        if (e.target.closest('[data-close]') || e.target === d) d.remove();
+      });
+      setTimeout(() => inp.focus(), 50);
+    });
+    pendingIds().forEach(id => { window.kpPending[id] = '下載中…'; });
+    if (pendingIds().length) poll(); else renderPill();
+  }
   // ---------- 被移除的：清單最下面可以加回 ----------
   const restore = document.createElement('button');
   restore.type = 'button'; restore.className = 'm-restore'; restore.hidden = true;

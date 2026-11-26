@@ -1,0 +1,16 @@
+# 手機「新增股票」的中繼站：手機 → 這裡排隊 → 叫 GitHub 開一台機器算 → 結果存回這裡 → 手機來拿
+name = "stock-relay"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+GH_REPO = "steve-chu/stock"
+WORKFLOW = "ondemand.yml"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Relay"]

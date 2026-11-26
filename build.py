@@ -60,6 +60,84 @@ def wanted():
     return out
 
 
+def compute_one(sid):
+    """一檔股票手機要用的全部檔案：{相對路徑: 內容}。每日建置和「手機新增」共用。"""
+    out = {}
+    # 先算「長期名單相反」的版本（手機上自己加／拿掉 ★ 時用），再算正常版本，
+    # 讓資料庫最後存的是正常版本的策略
+    FLIP.add(sid)
+    try:
+        alt = core.stock(sid)
+        alt["pf_levels"] = _levels.get(sid, [])
+        alt.pop("prefs", None)
+        out[f"stock/{sid}.alt.json"] = alt
+        ALT_Q[sid] = core._quote(sid, True)
+    except Exception as e:
+        print("  反向版本失敗（不影響）", sid, e)
+    finally:
+        FLIP.discard(sid)
+    r = core.stock(sid)
+    r["pf_levels"] = _levels.get(sid, [])
+    r.pop("prefs", None)
+    out[f"stock/{sid}.json"] = r
+    for tf in ("W", "M"):
+        out[f"bars/{sid}_{tf}.json"] = core.bars_tf(sid, tf)
+    try:
+        out[f"lbt/{sid}.json"] = core.longbt_one(sid)
+    except Exception as e:
+        out[f"lbt/{sid}.json"] = {"stock_id": sid, "error": f"回測失敗：{e}"}
+    return out
+
+
+def quote_one(sid, base=()):
+    """自選股清單上的一列。過熱／股災只對「持有的人」顯示，誰持有由各自的手機決定，所以先算好放在 _heat 等欄位。"""
+    q = core._quote(sid, True)
+    q.update({"core": sid in ds.core_ids(), "cyclical": ds.meta_get(f"category:{sid}") == "cyclical",
+              "_heat": q.pop("heat", None), "_crash": q.pop("crash", None), "_cooling": q.pop("cooling", False),
+              "held": False, "base": sid in base})
+    a = ALT_Q.get(sid)
+    if a:   # ★ 相反時，清單上會變的欄位
+        q["alt"] = {"buy": a.get("buy"), "next_buy": a.get("next_buy"), "_heat": a.get("heat"),
+                    "_crash": a.get("crash"), "_cooling": a.get("cooling", False)}
+    return q
+
+
+def relay_url():
+    """中繼站網址：環境變數 RELAY_URL，或倉庫裡的 relay.txt（部署好中繼站後填）。"""
+    url = os.environ.get("RELAY_URL", "").strip()
+    p = os.path.join(ROOT, "relay.txt")
+    if not url and os.path.exists(p):
+        url = open(p, encoding="utf-8").read().split("#")[0].strip()
+    return url.rstrip("/")
+
+
+def extra_ids():
+    """手機上新增過的股票（存在中繼站），每天一起更新。"""
+    url = relay_url()
+    if not url or OFFLINE:
+        return []
+    try:
+        import requests
+        ids = requests.get(url + "/extra", timeout=15).json().get("ids", [])
+        return [str(x).upper() for x in ids if str(x).isalnum()]
+    except Exception as e:
+        print("讀不到中繼站的新增清單（不影響）：", e)
+        return []
+
+
+def names_table():
+    """全部股票的代號、名稱、產業，手機「新增」搜尋用。"""
+    with ds.db() as c:
+        rows = c.execute("SELECT * FROM stock_info").fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        sid = d.get("stock_id")
+        if sid:
+            out.append([sid, d.get("stock_name") or d.get("name") or "", d.get("industry_category") or d.get("industry") or ""])
+    return sorted(out)
+
+
 def sync_watchlist(ids):
     have = ds.watchlist_ids()
     for sid in have:
@@ -112,6 +190,7 @@ def main():
         except Exception as e:
             print("股票名稱更新失敗（不影響）：", e)
     ids = wanted()
+    ids += [x for x in extra_ids() if x not in ids]
     sync_watchlist(ids)
     ids = ds.watchlist_ids()
     if os.path.exists(SITE):
@@ -119,25 +198,8 @@ def main():
     ok, failed = [], []
     for sid in ids:
         try:
-            # 先算「長期名單相反」的版本（手機上自己加／拿掉 ★ 時用），再算正常版本，
-            # 讓資料庫最後存的是正常版本的策略
-            FLIP.add(sid)
-            try:
-                alt = core.stock(sid)
-                alt["pf_levels"] = _levels.get(sid, [])
-                alt.pop("prefs", None)
-                dump(f"stock/{sid}.alt.json", alt)
-                ALT_Q[sid] = core._quote(sid, True)
-            except Exception as e:
-                print("  反向版本失敗（不影響）", sid, e)
-            finally:
-                FLIP.discard(sid)
-            r = core.stock(sid)
-            r["pf_levels"] = _levels.get(sid, [])
-            r.pop("prefs", None)
-            dump(f"stock/{sid}.json", r)
-            for tf in ("W", "M"):
-                dump(f"bars/{sid}_{tf}.json", core.bars_tf(sid, tf))
+            for path, obj in compute_one(sid).items():
+                dump(path, obj)
             ok.append(sid)
         except HTTPException as e:
             failed.append({"stock_id": sid, "error": e.detail})
@@ -147,25 +209,14 @@ def main():
         print(f"{sid} {'OK' if sid in ok else '失敗'}  {time.time() - t0:.0f}s", flush=True)
 
     # 自選股清單：過熱／股災只對「持有的人」顯示，誰持有由各自的手機決定，所以全部先算好
-    core_ids = ds.core_ids()
-    quotes = []
-    for sid in ids:
-        q = core._quote(sid, True)
-        q.update({"core": sid in core_ids, "cyclical": ds.meta_get(f"category:{sid}") == "cyclical",
-                  "_heat": q.pop("heat", None), "_crash": q.pop("crash", None), "_cooling": q.pop("cooling", False)})
-        q["held"] = False
-        a = ALT_Q.get(sid)
-        if a:   # ★ 相反時，清單上會變的欄位
-            q["alt"] = {"buy": a.get("buy"), "next_buy": a.get("next_buy"), "_heat": a.get("heat"),
-                        "_crash": a.get("crash"), "_cooling": a.get("cooling", False)}
-        quotes.append(q)
+    base = set(wanted())
+    quotes = [quote_one(sid, base) for sid in ids]
     dump("watchlist.json", {"quotes": quotes})
+    try:
+        dump("names.json", names_table())
+    except Exception as e:
+        print("股票名稱表失敗（不影響）：", e)
 
-    for sid in ok:
-        try:
-            dump(f"lbt/{sid}.json", core.longbt_one(sid))
-        except Exception as e:
-            dump(f"lbt/{sid}.json", {"stock_id": sid, "error": f"回測失敗：{e}"})
     try:
         dump("lbt_all.json", core.longbt_all())
     except Exception as e:
@@ -207,6 +258,8 @@ def write_index():
     html = html.replace('content="width=device-width, initial-scale=1"',
                         'content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"')
     html = html.replace("</head>", MOBILE_HEAD.format(v=v), 1)
+    if relay_url():   # 有中繼站才會出現「＋ 新增」
+        html = html.replace("</head>", f'<script>window.KP_RELAY = {json.dumps(relay_url())};</script>\n</head>', 1)
     html = html.replace('<script src="app.js', f'<script src="static-api.js?v={v}"></script>\n<script src="app.js', 1)
     html = html.replace("</body>", f'<script src="mobile.js?v={v}"></script>\n</body>', 1)
     assert "static-api.js" in html and "mobile.js" in html and "manifest" in html, "index.html 結構變了"

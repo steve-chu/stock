@@ -1,0 +1,29 @@
+# 部署（或更新）手機新增股票用的中繼站到 Cloudflare。改了 worker/ 也會自動重新部署。
+name: 部署中繼站
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["worker/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: 準備通關密語
+        env:
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+        run: echo "RUNNER_KEY=$(printf '%s' "$GH_DISPATCH_TOKEN-runner" | sha256sum | cut -c1-40)" >> "$GITHUB_ENV"
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            GH_TOKEN
+            RUNNER_KEY
+        env:
+          GH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+          RUNNER_KEY: ${{ env.RUNNER_KEY }}

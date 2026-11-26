@@ -142,3 +142,8 @@ body.bb-gifted > :not(.bb-gift) { visibility: hidden; }
 .bb-copy { border: 0; border-radius: 99px; padding: 10px 22px; font-size: 15px; font-weight: 700; color: #fff; background: var(--pink-grad);
   box-shadow: 0 6px 16px rgba(240,106,171,.35); word-break: break-all; }
 .bb-gift-cat { margin-top: 6px; animation: bbFloat 3s ease-in-out infinite; }
+.m-add { background: var(--pink-grad) !important; color: #fff !important; border: 0 !important; box-shadow: 0 4px 12px rgba(240,106,171,.35); }
+.m-results button { background: var(--pink-grad) !important; }
+.m-search { background: rgba(255,255,255,.85) !important; }
+.m-pill { background: rgba(255,255,255,.75) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-color: #fff !important; box-shadow: 0 8px 22px rgba(214,90,160,.25) !important; }
+.m-spin { border-color: #f6c6dd !important; border-top-color: #e5559a !important; }

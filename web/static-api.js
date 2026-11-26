@@ -8,11 +8,33 @@
 
   const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
   const fail = (msg, status = 400) => json({ detail: msg }, status);
-  const load = async p => {
-    const r = await realFetch(DATA + p + '?t=' + bust, { cache: 'no-store' });
-    if (!r.ok) throw new Error(r.status === 404 ? '找不到資料（可能還沒更新到這檔）' : `HTTP ${r.status}`);
+  // 手機新增的股票：當天先放在中繼站，隔天每日更新後才會出現在 data/ 裡
+  const RELAY = String(window.KP_RELAY || '').replace(/\/$/, '');
+  window.kpRelay = RELAY;
+  const relayLoad = async p => {
+    const r = await realFetch(`${RELAY}/file/${p}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status === 404 ? '還在下載中，好了會自動出現' : `HTTP ${r.status}`);
     return r.json();
   };
+  window.kpRelayLoad = relayLoad;
+  const load = async p => {
+    // 不在每天資料裡的（手機新增、還沒過夜的）直接找中繼站，省一次 404
+    const m = p.match(/^(?:stock|bars|lbt)\/([0-9A-Z]+)[._]/);
+    if (RELAY && m && window.kpPool && !window.kpPool.has(m[1])) return relayLoad(p);
+    const r = await realFetch(DATA + p + '?t=' + bust, { cache: 'no-store' });
+    if (r.ok) return r.json();
+    if (RELAY && /^(stock|bars|lbt)\//.test(p)) return relayLoad(p);
+    throw new Error(r.status === 404 ? '找不到資料（可能還沒更新到這檔）' : `HTTP ${r.status}`);
+  };
+  let namesP = null;
+  window.kpNames = () => (namesP = namesP || load('names.json').catch(() => { namesP = null; return []; }));
+
+  // 這支手機自己新增的股票
+  const AK = 'kp.m.added';
+  const added = () => { try { return JSON.parse(localStorage.getItem(AK) || '[]'); } catch { return []; } };
+  const setAdded = a => localStorage.setItem(AK, JSON.stringify([...new Set(a)]));
+  window.kpAdded = { all: added, set: setAdded };
+  window.kpPending = window.kpPending || {};   // mobile.js 填：{id: '下載中…' 或錯誤訊息}
 
   // ---------- 交易紀錄（只在這支手機）----------
   const trades = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
@@ -115,7 +137,15 @@
   window.kpHeld = heldSet;
 
   async function watchlist() {
-    const w = await load('watchlist.json'), held = heldSet(), hid = new Set(hidden());
+    const w = await load('watchlist.json'), held = heldSet(), hid = new Set(hidden()), add = new Set(added());
+    const pool = new Set(w.quotes.map(q => q.stock_id));
+    const extra = await Promise.all([...add].filter(id => !pool.has(id)).map(async id => {
+      if (RELAY && !window.kpPending[id]) { try { return await relayLoad(`quote/${id}.json`); } catch {} }
+      const nm = (await window.kpNames()).find(x => x[0] === id);
+      return { stock_id: id, name: nm ? nm[1] : id, stale: false, error: window.kpPending[id] || '下載中…', pending: true };
+    }));
+    w.quotes = [...w.quotes.filter(q => q.base !== false || add.has(q.stock_id)), ...extra];
+    window.kpPool = pool;
     w.quotes.forEach(q => { baseCore[q.stock_id] = q.core; });
     allQuotes = w.quotes.map(q => (flipped(q.stock_id) ? { ...q, ...(q.alt || {}), core: !q.core } : q));
     const ord = order(), pos = id => { const i = ord.indexOf(id); return i < 0 ? 1e6 : i; };
@@ -168,7 +198,9 @@
       return json({ ok: true });
     }
     if ((m = p.match(/^watchlist\/([^/]+)$/)) && method === 'DELETE') {
-      setHidden([...hidden(), decodeURIComponent(m[1])]);
+      const id = decodeURIComponent(m[1]);
+      if (added().includes(id)) setAdded(added().filter(x => x !== id));
+      else setHidden([...hidden(), id]);
       window.dispatchEvent(new Event('kp-hidden'));
       return json({ ok: true });
     }
