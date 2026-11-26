@@ -34,31 +34,22 @@
   peek.className = 'bb-peek'; peek.innerHTML = CAT.replace('class="bb-cat"', 'width="120" height="120"');
   $('.watch')?.append(peek);
 
-  // ---- 開場：Baby 錢包股股 ❤️ → 她的照片＋簽名 → 主畫面 ----
+  // ---- 開場：她的照片＋簽名，點一下才進主畫面 ----
   function splash(force) {
-    if (!force) {
-      try { if (sessionStorage.getItem('bb.splash')) return; sessionStorage.setItem('bb.splash', '1'); } catch {}
-    }
+    try { if (!force && sessionStorage.getItem('bb.splash')) return; } catch {}
     const d = document.createElement('div');
     d.className = 'bb-splash';
     const spark = [[12, 18], [82, 12], [70, 78], [18, 72], [50, 8], [88, 46]]
       .map(([x, y], i) => `<span class="bb-sparkle" style="left:${x}%;top:${y}%;animation-delay:${i * .35}s">✦</span>`).join('');
     d.innerHTML = `${spark}
-      <div class="bb-stage one">${CAT.replace('class="bb-cat"', 'width="84" height="84"')}
-        <div class="bb-hello">Baby 錢包股股</div><div class="bb-heart">❤️</div></div>
-      <div class="bb-stage two hide"><img class="bb-photo" src="photo.webp" alt="">
+      <div class="bb-stage two"><img class="bb-photo" src="photo.webp" alt="">
         <div class="bb-sign">making money<br>makes me horny</div></div>
-      <div class="bb-skip">點一下跳過</div>`;
+      <div class="bb-skip">點一下進入</div>`;
     document.body.append(d);
-    const one = d.querySelector('.one'), two = d.querySelector('.two');
-    let step = 0, timer;
-    const next = () => {
-      clearTimeout(timer); step++;
-      if (step === 1) { one.classList.add('hide'); two.classList.remove('hide'); timer = setTimeout(next, 2800); }
-      else { d.classList.add('out'); setTimeout(() => d.remove(), 600); }
-    };
-    timer = setTimeout(next, 1500);
-    d.addEventListener('click', next);
+    d.addEventListener('click', () => {
+      try { sessionStorage.setItem('bb.splash', '1'); } catch {}   // 點了才算看過
+      d.classList.add('out'); setTimeout(() => d.remove(), 600);
+    }, { once: true });
   }
   splash(false);
   new MutationObserver(fixBack).observe(document.querySelector('.top'), { childList: true, subtree: true, characterData: true });

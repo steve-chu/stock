@@ -87,7 +87,8 @@ body.m-stock .bb-avatar { display: none; }
 @keyframes bbFloat { 50% { transform: translateY(-6px); } }
 .bb-sign { font-family: "BBSign", "Snell Roundhand", cursive; font-size: 40px; line-height: 1.15; color: #d9488e;
   text-shadow: 0 2px 10px rgba(255,255,255,.9); margin-top: -6px; }
-.bb-skip { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); left: 0; right: 0; font-size: 12px; color: #b493b1; }
+.bb-skip { position: absolute; bottom: calc(22px + env(safe-area-inset-bottom)); left: 0; right: 0; font-size: 13px; color: #c27aa6; letter-spacing: .1em; animation: bbPulse 1.8s ease-in-out infinite; }
+@keyframes bbPulse { 50% { opacity: .35; } }
 .bb-sparkle { position: absolute; color: #fff; font-size: 18px; animation: bbTw 2.4s ease-in-out infinite; text-shadow: 0 0 8px rgba(255,140,200,.8); }
 @keyframes bbTw { 50% { opacity: .2; transform: scale(.6); } }
 @media (orientation: landscape) and (max-height: 600px) {
