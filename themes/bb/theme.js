@@ -36,7 +36,11 @@
 
   // ---- 開場：她的照片＋簽名，點一下才進主畫面 ----
   function splash(force) {
-    try { if (!force && sessionStorage.getItem('bb.splash')) return; } catch {}
+    // 每次打開都出現；只有「剛點過、緊接著自動更新重新載入」那一次不再出現
+    if (!force) {
+      let at = 0; try { at = +localStorage.getItem('bb.splashAt') || 0; } catch {}
+      if (/[?&]v=/.test(location.search) && Date.now() - at < 10 * 60 * 1000) return;
+    }
     const d = document.createElement('div');
     d.className = 'bb-splash';
     const spark = [[12, 18], [82, 12], [70, 78], [18, 72], [50, 8], [88, 46]]
@@ -47,7 +51,7 @@
       <div class="bb-skip">點一下進入</div>`;
     document.body.append(d);
     d.addEventListener('click', () => {
-      try { sessionStorage.setItem('bb.splash', '1'); } catch {}   // 點了才算看過
+      try { localStorage.setItem('bb.splashAt', String(Date.now())); } catch {}
       d.classList.add('out'); setTimeout(() => d.remove(), 600);
     }, { once: true });
   }
