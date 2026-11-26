@@ -59,7 +59,7 @@ body.m-stock .brand > svg, body.m-stock .brand > span { display: none; }
 .chart-wrap { height: 60vh !important; min-height: 340px !important; flex: none !important; }
 
 .analysis { padding: 0 12px 24px !important; border-top: 1px solid var(--line); }
-.tabs { margin: 0 -12px 12px !important; top: var(--top-h, 70px) !important; }
+.tabs { margin: 0 -12px 12px !important; top: 0 !important; }
 .tabpane { max-height: none !important; overflow: visible !important; }
 .card { padding: 12px; }
 .card table { font-size: 12.5px; }
@@ -73,3 +73,57 @@ body.m-stock .brand > svg, body.m-stock .brand > span { display: none; }
 .tbl th, .tbl td { padding: 6px 5px !important; }
 .tbl td:first-child, .tbl th:first-child { white-space: nowrap; }
 .bt-btns { flex-wrap: wrap; row-gap: 6px; }
+
+
+/* ================= 個股畫面：App 式版面（整頁不捲，K線和看板各自一區） ================= */
+.m-mode { display: none; margin: 0 auto; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 2px; gap: 2px; }
+.m-mode button { border: 0; background: none; color: var(--mute); font-size: 13.5px; font-weight: 600; padding: 0 11px; min-height: 32px; border-radius: 7px; }
+.m-mode button.on { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+body.m-stock .m-mode { display: inline-flex; }
+body.m-stock .refresh-all { padding: 0 9px; }
+body.m-stock .refresh-all .m-rt { display: none; }
+
+body.m-stock { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+body.m-stock .top { position: relative; flex: none; }
+body.m-stock .layout { flex: 1; min-height: 0; display: flex !important; flex-direction: column; }
+body.m-stock .chart-col { flex: 1 1 56%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 8px 12px 4px !important; }
+body.m-stock .chart-wrap { flex: 1 1 auto !important; height: auto !important; min-height: 140px !important; }
+body.m-stock .side { flex: 1 1 44%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-top: 1px solid var(--line); }
+body.m-stock .analysis { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  border-top: 0; padding-bottom: calc(24px + var(--safe-b)) !important; }
+
+/* 個股標題壓成精簡兩行，讓 K 線多一點空間 */
+body.m-stock .quote-head { flex-wrap: nowrap; align-items: center; gap: 8px; }
+body.m-stock .ident { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; gap: 6px; }
+body.m-stock .ident::-webkit-scrollbar { display: none; }
+body.m-stock .ident > * { flex: none; }
+body.m-stock .ident h1 { font-size: 18px !important; white-space: nowrap; }
+body.m-stock #sym-ind { display: none; }
+body.m-stock .ident .badge { font-size: 11.5px; padding: 1px 7px; }
+body.m-stock .price { flex: none; text-align: right; line-height: 1.15; }
+body.m-stock .price strong { font-size: 19px !important; display: block; }
+body.m-stock .price span { font-size: 12px; }
+body.m-stock .toolbar { margin-top: 6px; }
+body.m-stock .legend { font-size: 11px; line-height: 1.5; min-height: 17px; flex-wrap: nowrap; gap: 10px; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+body.m-stock .legend::-webkit-scrollbar { display: none; }
+body.m-stock .legend > * { flex: none; }
+
+/* 只看 K 線 */
+body.m-stock.v-chart .side { display: none; }
+body.m-stock.v-chart .chart-col { flex-basis: 100%; }
+/* 只看看板（圖表移到畫面外，不能 display:none，否則回來時副圖比例會壞） */
+body.m-stock.v-text .chart-col { position: fixed; left: -200vw; top: 0; width: 100vw; height: 60vh; visibility: hidden; pointer-events: none; }
+body.m-stock.v-text .side { flex-basis: 100%; border-top: 0; }
+
+/* 手機轉橫：K 線在左、看板在右 */
+@media (orientation: landscape) and (max-height: 600px) {
+  body.m-stock .top { min-height: 0; padding-top: 0; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  body.m-stock .brand { min-height: 40px; }
+  body.m-stock .status { display: none !important; }
+  body.m-stock .layout { flex-direction: row; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  body.m-stock .chart-col { flex: 1 1 58%; }
+  body.m-stock .side { flex: 1 1 42%; border-top: 0; border-left: 1px solid var(--line); }
+  body.m-stock.v-chart .chart-col { flex-basis: 100%; }
+  body.m-stock.v-text .side { flex-basis: 100%; border-left: 0; }
+  body.m-stock .tabs button { min-height: 38px; padding: 8px 4px 6px; }
+}

@@ -8,8 +8,7 @@
     window.scrollTo(0, 0);
     if (view === 'stock') {
       if (push) history.pushState({ v: 'stock' }, '');
-      window.dispatchEvent(new Event('resize'));   // 圖表從隱藏變顯示，讓它重新量尺寸
-      [60, 400].forEach(ms => setTimeout(() => { try { setPaneHeights(); } catch {} }, ms));
+      fixPanes();   // 圖表從隱藏變顯示，讓它重新量尺寸
     }
   };
   show('list');
@@ -27,6 +26,30 @@
   back.addEventListener('click', () => (history.state?.v === 'stock' ? history.back() : show('list')));
   window.addEventListener('popstate', e => show(e.state?.v === 'stock' ? 'stock' : 'list'));
 
+  // 個股畫面的版面：K線／一半／看板（記住上次的選擇）
+  const fixPanes = () => [80, 350].forEach(ms => setTimeout(() => {
+    window.dispatchEvent(new Event('resize'));
+    try { setPaneHeights(); } catch {}
+  }, ms));
+  const modes = [['chart', 'K線'], ['split', '一半'], ['text', '看板']];
+  const seg = document.createElement('div');
+  seg.className = 'm-mode'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '版面');
+  seg.innerHTML = modes.map(([k, t]) => `<button type="button" data-mode="${k}">${t}</button>`).join('');
+  back.after(seg);
+  const setMode = m => {
+    if (!modes.some(x => x[0] === m)) m = 'split';
+    body.classList.toggle('v-chart', m === 'chart');
+    body.classList.toggle('v-text', m === 'text');
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+    try { localStorage.setItem('kp.m.mode', m); } catch {}
+    fixPanes();
+  };
+  seg.addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+  let saved = 'split'; try { saved = localStorage.getItem('kp.m.mode') || 'split'; } catch {}
+  setMode(saved);
+  window.addEventListener('orientationchange', fixPanes);
+  matchMedia('(orientation: landscape)').addEventListener?.('change', fixPanes);
+
   // 點清單任一檔 → 進個股畫面（電腦版的程式會負責載入那檔）
   $('watchlist').addEventListener('click', e => {
     if (e.target.closest('[data-rm]')) return;
@@ -35,7 +58,8 @@
 
   // 全部更新 → 手機版其實是「重新讀取 GitHub 今天算好的資料」
   const ra = $('refresh-all');
-  ra.lastChild.textContent = ' 重新整理';
+  ra.lastChild.remove();
+  ra.insertAdjacentHTML('beforeend', '<span class="m-rt">重新整理</span>');
   ra.title = '重新讀取最新算好的資料（每個交易日傍晚自動更新）';
 
   // 清單下方說明
