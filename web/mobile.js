@@ -129,7 +129,7 @@
     const t = e.touches[0]; sx = t.clientX; sy = t.clientY; sLi = e.target.closest('li[data-id]'); swiping = false;
   }, { passive: true });
   wl.addEventListener('touchmove', e => {
-    if (!sLi) return;
+    if (!sLi || drag) return;
     const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dy) > 24 && !swiping) { sLi = null; return; }   // 是上下捲動
     if (dx < -40) { swiping = true; closeSwipes(sLi); sLi.classList.remove('m-star-hint'); sLi.classList.add('m-swiped'); }
@@ -141,13 +141,78 @@
   }, { passive: true });
   wl.addEventListener('touchend', () => {
     if (swiping) wl.dataset.justSwiped = Date.now();
-    if (sLi?.classList.contains('m-star-hint')) { sLi.classList.remove('m-star-hint'); toggleStar(sLi.dataset.id); }
+    if (!drag && sLi?.classList.contains('m-star-hint')) { sLi.classList.remove('m-star-hint'); toggleStar(sLi.dataset.id); }
     if (sLi) delete sLi.dataset.closing;
     sLi = null;
   }, { passive: true });
 
+  // ---------- 按住拖曳：排順序（只影響這支手機） ----------
+  let lpTimer = null, drag = null, lpStart = [0, 0];
+  const pageY = e => e.touches[0].clientY + window.scrollY;
+  wl.addEventListener('touchstart', e => {
+    const li = e.target.closest('li[data-id]');
+    if (!li || li.classList.contains('m-swiped') || e.target.closest('[data-rm]')) return;
+    const y0 = pageY(e), x0 = e.touches[0].clientX;
+    clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => {
+      closeSwipes(); li.classList.remove('m-star-hint');
+      drag = { li, startY: y0, lastY: y0, top: li.offsetTop };
+      li.classList.add('m-drag'); wl.classList.add('m-dragging');
+      wl.dataset.justSwiped = Date.now();
+      autoScroll();
+    }, 380);
+    lpStart = [x0, e.touches[0].clientY];
+  }, { passive: true });
+  const moveDrag = y => {
+    const { li } = drag;
+    drag.lastY = y;
+    li.style.transform = `translateY(${y - drag.startY}px) scale(1.03)`;
+    const r = li.getBoundingClientRect(), mid = r.top + r.height / 2;
+    const next = li.nextElementSibling, prev = li.previousElementSibling;
+    let moved = false;
+    if (next && next.matches('li[data-id]') && mid > next.getBoundingClientRect().top + next.offsetHeight / 2) { wl.insertBefore(next, li); moved = true; }
+    else if (prev && prev.matches('li[data-id]') && mid < prev.getBoundingClientRect().top + prev.offsetHeight / 2) { wl.insertBefore(li, prev); moved = true; }
+    if (moved) {   // 換位後，修正起點讓手指下的那列不會跳
+      const t = li.offsetTop; drag.startY += t - drag.top; drag.top = t;
+      li.style.transform = `translateY(${y - drag.startY}px) scale(1.03)`;
+    }
+  };
+  wl.addEventListener('touchmove', e => {
+    if (!drag) {
+      const t = e.touches[0];
+      if (Math.hypot(t.clientX - lpStart[0], t.clientY - lpStart[1]) > 8) clearTimeout(lpTimer);   // 是滑動或捲動，不是按住
+      return;
+    }
+    e.preventDefault();   // 拖曳中不要捲動整頁
+    moveDrag(pageY(e));
+  }, { passive: false });
+  const endSort = () => {
+    clearTimeout(lpTimer);
+    if (!drag) return;
+    const { li } = drag; drag = null;
+    li.classList.remove('m-drag'); wl.classList.remove('m-dragging'); li.style.transform = '';
+    wl.dataset.justSwiped = Date.now();
+    const shown = [...wl.querySelectorAll('li[data-id]')].map(x => x.dataset.id);
+    const rest = (window.kpAllQuotes?.() || []).map(q => q.stock_id).filter(id => !shown.includes(id));
+    window.kpOrder?.set([...shown, ...rest]);
+    reloadList();
+  };
+  wl.addEventListener('touchend', endSort);
+  wl.addEventListener('touchcancel', endSort);
+  // 拖到畫面上下緣時自動捲動
+  const autoScroll = () => {
+    if (!drag) return;
+    const vy = drag.lastY - window.scrollY, H = window.innerHeight;
+    const v = vy < 110 ? -10 : vy > H - 110 ? 10 : 0;
+    if (v) { window.scrollBy(0, v); moveDrag(drag.lastY + v); }
+    requestAnimationFrame(autoScroll);
+  };
+
   // ★ 長期名單：往右滑加入／拿掉（只影響這支手機）
-  const reloadList = () => { window.kpQuiet = true; $('refresh-all').click(); };
+  const reloadList = () => {
+    window.kpQuiet = true; $('refresh-all').click();
+    setTimeout(() => { const t = $('toast'); if (t && !t.textContent.trim()) t.hidden = true; }, 350);   // 不要跳出空白提示
+  };
   const toggleStar = async id => {
     if (!window.kpStar) return;
     const q = (window.kpAllQuotes?.() || []).find(x => x.stock_id === id) || {};
@@ -224,7 +289,7 @@
   // 清單下方說明
   const note = document.createElement('p');
   note.className = 'm-note';
-  note.textContent = '往右滑加入／移出 ★ 長期名單，往左滑從清單移除（都只影響這支手機）。資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
+  note.textContent = '按住拖曳可以排順序；往右滑加入／移出 ★ 長期名單，往左滑從清單移除（都只影響這支手機）。資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
   document.querySelector('.watch').append(note);
 
   // 狀態列：補上「資料更新時間」

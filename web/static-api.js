@@ -100,6 +100,10 @@
     is: isCore,
     set(sid, on) { const o = stars(); if (on === !!baseCore[sid]) delete o[sid]; else o[sid] = on; localStorage.setItem(SK, JSON.stringify(o)); },
   };
+  // 自選股順序：按住拖曳排的，只記在這支手機
+  const OK = 'kp.m.order';
+  const order = () => { try { return JSON.parse(localStorage.getItem(OK) || '[]'); } catch { return []; } };
+  window.kpOrder = { set: ids => localStorage.setItem(OK, JSON.stringify(ids)), all: order };
   let allQuotes = [];
   window.kpAllQuotes = () => allQuotes;
 
@@ -114,7 +118,9 @@
     const w = await load('watchlist.json'), held = heldSet(), hid = new Set(hidden());
     w.quotes.forEach(q => { baseCore[q.stock_id] = q.core; });
     allQuotes = w.quotes.map(q => (flipped(q.stock_id) ? { ...q, ...(q.alt || {}), core: !q.core } : q));
-    const quotes = allQuotes.filter(q => !hid.has(q.stock_id)).map(q => {
+    const ord = order(), pos = id => { const i = ord.indexOf(id); return i < 0 ? 1e6 : i; };
+    const sorted = allQuotes.map((q, i) => [q, i]).sort((a, b) => pos(a[0].stock_id) - pos(b[0].stock_id) || a[1] - b[1]).map(x => x[0]);
+    const quotes = sorted.filter(q => !hid.has(q.stock_id)).map(q => {
       const h = held.has(q.stock_id);
       return { ...q, held: h, heat: h ? q._heat : null, crash: h ? q._crash : null, cooling: h ? !!q._cooling : false };
     });
