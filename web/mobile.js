@@ -50,12 +50,7 @@
 
   // 擋掉 iOS 兩指縮放整個畫面（K 線自己的兩指縮放照常）
   ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
-  let lastTap = 0;
-  document.addEventListener('touchend', e => {   // 連點兩下不放大
-    const now = Date.now();
-    if (now - lastTap < 300 && !e.target.closest('input,textarea,select')) e.preventDefault();
-    lastTap = now;
-  }, { passive: false });
+  // 連點放大：CSS 的 touch-action 已經擋掉
 
   // 中間分隔線：拖拉調整 K 線和看板的比例（直放、橫放各自記住）
   const layout = document.querySelector('.layout');
@@ -110,11 +105,93 @@
   matchMedia('(orientation: landscape)').addEventListener?.('change', onRotate);
   window.addEventListener('resize', fitSoon);
 
-  // 點清單任一檔 → 進個股畫面（電腦版的程式會負責載入那檔）
-  $('watchlist').addEventListener('click', e => {
-    if (e.target.closest('[data-rm]')) return;
-    if (e.target.closest('li[data-id]')) show('stock', true);
+  // ---------- 對話框 ----------
+  const dialog = (title, text, okText, danger) => new Promise(res => {
+    const d = document.createElement('div');
+    d.className = 'm-dlg';
+    d.innerHTML = `<div class="m-dlg-box" role="dialog" aria-modal="true"><h3></h3><p></p>
+      <div class="m-dlg-btns"><button type="button" data-a="0">取消</button><button type="button" data-a="1" class="${danger ? 'danger' : ''}"></button></div></div>`;
+    d.querySelector('h3').textContent = title; d.querySelector('p').textContent = text;
+    d.querySelector('[data-a="1"]').textContent = okText;
+    d.addEventListener('click', e => {
+      const b = e.target.closest('[data-a]');
+      if (!b && e.target !== d) return;
+      d.remove(); res(b?.dataset.a === '1');
+    });
+    document.body.append(d);
+  });
+
+  // ---------- 自選股：往左滑出現「移除」 ----------
+  const wl = $('watchlist');
+  const closeSwipes = except => wl.querySelectorAll('li.m-swiped').forEach(li => li !== except && li.classList.remove('m-swiped'));
+  let sx = 0, sy = 0, sLi = null, swiping = false;
+  wl.addEventListener('touchstart', e => {
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; sLi = e.target.closest('li[data-id]'); swiping = false;
+  }, { passive: true });
+  wl.addEventListener('touchmove', e => {
+    if (!sLi) return;
+    const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dy) > 24 && !swiping) { sLi = null; return; }   // 是上下捲動
+    if (dx < -40) { swiping = true; closeSwipes(sLi); sLi.classList.add('m-swiped'); }
+    else if (dx > 40) { swiping = true; sLi.classList.remove('m-swiped'); }
+  }, { passive: true });
+  wl.addEventListener('touchend', () => { if (swiping) wl.dataset.justSwiped = Date.now(); sLi = null; }, { passive: true });
+
+  let confirmed = null;
+  wl.addEventListener('click', async e => {
+    if (Date.now() - (+wl.dataset.justSwiped || 0) < 400) { e.stopPropagation(); e.preventDefault(); return; }
+    const rm = e.target.closest('[data-rm]');
+    if (rm) {
+      const id = rm.dataset.rm;
+      if (confirmed === id) return;           // 已確認：交給電腦版的程式移除
+      e.stopPropagation(); e.preventDefault();
+      const q = (window.kpAllQuotes?.() || []).find(x => x.stock_id === id) || {};
+      const held = window.kpHeld?.().has(id);
+      const name = `${q.name || ''} ${id}`.trim();
+      if (q.core || held) {
+        const why = [q.core && '在你的長期名單（★）', held && '你目前還有持股'].filter(Boolean).join('，');
+        if (!await dialog(`確定移除 ${name}？`, `這檔${why}。移除後只是從這支手機的清單拿掉，持股紀錄不會刪，之後可以在清單最下面加回。`, '移除', true)) {
+          closeSwipes(); return;
+        }
+      }
+      confirmed = id;
+      const click = () => wl.querySelector(`[data-rm="${CSS.escape(id)}"]`)?.click();
+      click(); click();                       // 有持股時電腦版要按兩次才會移除
+      confirmed = null;
+      return;
+    }
+    if (wl.querySelector('li.m-swiped')) { closeSwipes(); e.stopPropagation(); e.preventDefault(); return; }
+    if (e.target.closest('li[data-id]')) show('stock', true);   // 點一檔 → 進個股畫面
   }, true);
+
+  // ---------- 被移除的：清單最下面可以加回 ----------
+  const restore = document.createElement('button');
+  restore.type = 'button'; restore.className = 'm-restore'; restore.hidden = true;
+  document.querySelector('.watch').append(restore);
+  const syncRestore = () => {
+    const n = window.kpHidden?.all().length || 0;
+    restore.hidden = !n; restore.textContent = `已從清單移除 ${n} 檔 · 加回`;
+  };
+  window.addEventListener('kp-hidden', syncRestore);
+  restore.addEventListener('click', async () => {
+    const ids = window.kpHidden.all(), all = window.kpAllQuotes?.() || [];
+    const d = document.createElement('div');
+    d.className = 'm-dlg';
+    d.innerHTML = `<div class="m-dlg-box"><h3>加回清單</h3><ul class="m-hid">${ids.map(id => {
+      const q = all.find(x => x.stock_id === id) || {};
+      return `<li><span>${q.core ? '★ ' : ''}${q.name || ''} <small>${id}</small></span><button type="button" data-back="${id}">加回</button></li>`;
+    }).join('')}</ul><div class="m-dlg-btns"><button type="button" data-all>全部加回</button><button type="button" data-close>關閉</button></div></div>`;
+    const done = () => { d.remove(); syncRestore(); $('refresh-all').click(); };
+    d.addEventListener('click', e => {
+      const b = e.target.closest('[data-back]');
+      if (b) { window.kpHidden.set(window.kpHidden.all().filter(x => x !== b.dataset.back)); b.closest('li').remove();
+        if (!d.querySelector('[data-back]')) done(); return; }
+      if (e.target.closest('[data-all]')) { window.kpHidden.set([]); done(); return; }
+      if (e.target.closest('[data-close]') || e.target === d) done();
+    });
+    document.body.append(d);
+  });
+  setTimeout(syncRestore, 500);
 
   // 全部更新 → 手機版其實是「重新讀取 GitHub 今天算好的資料」
   const ra = $('refresh-all');
@@ -125,7 +202,7 @@
   // 清單下方說明
   const note = document.createElement('p');
   note.className = 'm-note';
-  note.textContent = '資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
+  note.textContent = '往左滑可以從清單移除（只影響這支手機）。資料每個交易日傍晚自動更新一次。持股紀錄只存在這支手機，不會上傳；換手機或清除 Safari 資料會不見。';
   document.querySelector('.watch').append(note);
 
   // 狀態列：補上「資料更新時間」

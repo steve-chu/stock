@@ -85,6 +85,14 @@
     });
   }
 
+  // 從清單移除：只記在這支手機
+  const HK = 'kp.m.hidden';
+  const hidden = () => { try { return JSON.parse(localStorage.getItem(HK) || '[]'); } catch { return []; } };
+  const setHidden = h => localStorage.setItem(HK, JSON.stringify([...new Set(h)]));
+  window.kpHidden = { all: hidden, set: setHidden };
+  let allQuotes = [];
+  window.kpAllQuotes = () => allQuotes;
+
   const heldSet = () => {
     const by = {};
     for (const t of trades()) (by[t.stock_id] = by[t.stock_id] || []).push(t);
@@ -93,8 +101,9 @@
   window.kpHeld = heldSet;
 
   async function watchlist() {
-    const w = await load('watchlist.json'), held = heldSet();
-    const quotes = w.quotes.map(q => {
+    const w = await load('watchlist.json'), held = heldSet(), hid = new Set(hidden());
+    allQuotes = w.quotes;
+    const quotes = w.quotes.filter(q => !hid.has(q.stock_id)).map(q => {
       const h = held.has(q.stock_id);
       return { ...q, held: h, heat: h ? q._heat : null, crash: h ? q._crash : null, cooling: h ? !!q._cooling : false };
     });
@@ -136,6 +145,11 @@
     }
     if ((m = p.match(/^trades\/(\d+)$/)) && method === 'DELETE') {
       saveTrades(trades().filter(t => t.id !== +m[1]));
+      return json({ ok: true });
+    }
+    if ((m = p.match(/^watchlist\/([^/]+)$/)) && method === 'DELETE') {
+      setHidden([...hidden(), decodeURIComponent(m[1])]);
+      window.dispatchEvent(new Event('kp-hidden'));
       return json({ ok: true });
     }
     if (p === 'search') return json([]);
