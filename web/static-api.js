@@ -1,7 +1,7 @@
 // 手機版：電腦版畫面原封不動，把它呼叫的 /api/... 改成讀 GitHub 每天算好的檔案（data/...）。
 // 持股、交易紀錄只存在這支手機（localStorage），不會上傳。
 (() => {
-  const DATA = new URL('data/', document.baseURI).href;
+  const DATA = new URL(window.KP_DATA || 'data/', document.baseURI).href;   // 主題版（例如 bb/）共用上一層的資料
   const realFetch = window.fetch.bind(window);
   const KEY = 'kp.m.trades';
   let bust = Date.now();

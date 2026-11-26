@@ -243,7 +243,7 @@
   const myVer = document.querySelector('meta[name="kp-ver"]')?.content;
   const checkVer = async () => {
     try {
-      const r = await fetch('data/version.json?t=' + Date.now(), { cache: 'no-store' });
+      const r = await fetch((window.KP_DATA || 'data/') + 'version.json?t=' + Date.now(), { cache: 'no-store' });
       const { v } = await r.json();
       if (!myVer || !v || v === myVer || sessionStorage.getItem('kp.reloaded') === v) return;
       sessionStorage.setItem('kp.reloaded', v);

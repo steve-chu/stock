@@ -1,0 +1,96 @@
+/* ================= 貝貝版：有質感的粉紫玻璃 ================= */
+@font-face { font-family: "BBSign"; src: url("sign.woff2") format("woff2"); font-display: swap; }
+:root {
+  --bg: #fbe8f2; --panel: rgba(255,255,255,.62); --panel-2: rgba(255,255,255,.82);
+  --line: rgba(222,170,205,.55); --ink: #3e2443; --mute: #8c6889; --faint: #b897b4;
+  --up: #e8396b; --down: #12a079; --flat: #a68aa3; --accent: #e5559a; --warn: #d98112;
+  --ma5: #eda100; --ma20: #6c7cf5; --ma60: #b06aee; --cost: #0ea5c6; --wash: #d98112; --dist: #e2642a;
+  --grid: rgba(196,140,182,.16);
+  --glass: rgba(255,255,255,.58); --glass-line: rgba(255,255,255,.9);
+  --pink-grad: linear-gradient(135deg, #ff9fcb, #f06aab);
+  color-scheme: light;
+}
+html { background: #fbe3ef; }
+body {
+  color: var(--ink);
+  background: linear-gradient(165deg, #fde3f0 0%, #f7d7ee 32%, #ead6f8 66%, #fde6ee 100%) fixed;
+}
+/* 玻璃面板 */
+.top { background: rgba(255,255,255,.55) !important; -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+  border-bottom: 1px solid var(--glass-line) !important; box-shadow: 0 4px 18px rgba(214,120,170,.12); }
+.side, .panel, .chart-col { background: transparent !important; }
+.card, .wl li, .m-dlg-box, .tabs, .toast {
+  background: var(--glass) !important; -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-line) !important; box-shadow: 0 6px 22px rgba(214,120,170,.14);
+}
+.card { border-radius: 18px; }
+.wl { margin: 0 !important; display: grid; gap: 8px; }
+.wl li { border-radius: 16px; }
+.wl li.active { background: rgba(255,255,255,.85) !important; }
+.tabs { border-radius: 0; border-left: 0 !important; border-right: 0 !important; box-shadow: none; }
+.tabs button.on { border-bottom-color: #f06aab; color: var(--ink); }
+.toast { color: var(--ink) !important; border-radius: 14px !important; }
+.chart-msg { background: rgba(252,233,243,.92) !important; }
+
+/* 按鈕：選中的是粉紅漸層 */
+.seg, .m-mode, .chips button, .icon-btn, .refresh-all, .btn-s, .bt-btns .seg {
+  background: rgba(255,255,255,.55) !important; border-color: var(--glass-line) !important; }
+.seg button.on, .m-mode button.on, .lbt-y button.on {
+  background: var(--pink-grad) !important; color: #fff !important; box-shadow: 0 3px 10px rgba(240,106,171,.35) !important; }
+.chips button.on { background: rgba(255,255,255,.9) !important; }
+.submit { background: var(--pink-grad) !important; }
+
+/* 電腦版寫死的深色，換成淺色 */
+.warn { background: #fff3e2 !important; border-color: #f4cf98 !important; }
+.tag, .danger { border-color: #f4cf98 !important; }
+.tbl td, .crit-list li { border-bottom-color: rgba(214,160,196,.28) !important; }
+.tbl tr.hl td { background: rgba(255,190,220,.35) !important; }
+.hint.bull { background: #ffe6ee !important; border-color: #f7b3c6 !important; }
+.hint.bear { background: #e4f7ef !important; border-color: #a9e3cb !important; }
+.clickable:hover { background: rgba(255,255,255,.7) !important; }
+.clickable.active, h4.clickable.active, tr.clickable.active td { background: #ffe3f0 !important; }
+.replay { background: #fff0f7 !important; }
+.crit li::before, .crit-list li::before, .chk li::before { background: #f3e3ef; }
+.dca, tr.dca td, tr.tot td { background: rgba(255,255,255,.45) !important; }
+input, select, textarea, .sel { background: rgba(255,255,255,.8) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+.m-split { background: rgba(255,255,255,.45) !important; border-color: var(--glass-line) !important; }
+.m-split::after { background: #f2a3c8 !important; }
+.m-dlg { background: rgba(120,60,100,.28) !important; }
+.m-dlg-btns button { background: rgba(255,255,255,.8) !important; }
+.m-dlg-btns button.danger { background: var(--pink-grad) !important; border-color: transparent !important; color: #fff !important; }
+.m-restore { background: rgba(255,255,255,.6) !important; color: #e0509a !important; }
+.status .dot { background: #f06aab !important; }
+
+/* 品牌：小貓＋貝貝看盤台 */
+.bb-cat { width: 26px; height: 26px; flex: none; }
+.brand > span { background: linear-gradient(90deg, #e2508f, #a35bd6); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
+.bb-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 3px 10px rgba(240,106,171,.35);
+  flex: none; margin-left: 8px; background: #ffd3e6 center/cover; padding: 0; }
+body.m-stock .bb-avatar { display: none; }
+.watch-head h2 { display: flex; align-items: center; gap: 6px; }
+.watch-head h2 .bb-cat { width: 22px; height: 22px; }
+.bb-peek { display: block; width: 120px; margin: 18px auto 0; opacity: .95; }
+
+/* ================= 開場 ================= */
+.bb-splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; text-align: center;
+  background: linear-gradient(165deg, #fde3f0 0%, #f5d2ec 40%, #e6d3f8 75%, #fde6ee 100%);
+  transition: opacity .55s ease; padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom); overflow: hidden; }
+.bb-splash.out { opacity: 0; pointer-events: none; }
+.bb-stage { grid-area: 1 / 1; display: grid; justify-items: center; gap: 14px; transition: opacity .6s ease, transform .6s ease; }
+.bb-stage.hide { opacity: 0; transform: scale(.94); pointer-events: none; }
+.bb-hello { font-size: 30px; font-weight: 800; letter-spacing: .02em;
+  background: linear-gradient(90deg, #e2508f, #a35bd6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bb-heart { font-size: 64px; line-height: 1; animation: bbBeat 1s ease-in-out infinite; filter: drop-shadow(0 6px 14px rgba(240,80,150,.35)); }
+@keyframes bbBeat { 0%,100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(1); } 45% { transform: scale(1.12); } }
+.bb-photo { width: min(78vw, 360px); max-height: 62vh; object-fit: contain; filter: drop-shadow(0 14px 28px rgba(200,80,140,.28));
+  animation: bbFloat 3.2s ease-in-out infinite; }
+@keyframes bbFloat { 50% { transform: translateY(-6px); } }
+.bb-sign { font-family: "BBSign", "Snell Roundhand", cursive; font-size: 40px; line-height: 1.15; color: #d9488e;
+  text-shadow: 0 2px 10px rgba(255,255,255,.9); margin-top: -6px; }
+.bb-skip { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); left: 0; right: 0; font-size: 12px; color: #b493b1; }
+.bb-sparkle { position: absolute; color: #fff; font-size: 18px; animation: bbTw 2.4s ease-in-out infinite; text-shadow: 0 0 8px rgba(255,140,200,.8); }
+@keyframes bbTw { 50% { opacity: .2; transform: scale(.6); } }
+@media (orientation: landscape) and (max-height: 600px) {
+  .bb-stage.two { grid-auto-flow: column; align-items: center; gap: 24px; }
+  .bb-photo { max-height: 78vh; width: auto; }
+}

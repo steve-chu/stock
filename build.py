@@ -179,7 +179,8 @@ def main():
     # 網頁：電腦版的畫面（core/static）＋手機版外殼（web/）
     shutil.copytree(os.path.join(CORE, "static"), SITE, dirs_exist_ok=True)
     shutil.copytree(os.path.join(ROOT, "web"), SITE, dirs_exist_ok=True)
-    write_index()
+    ver = write_index()
+    build_themes(ver)
     open(os.path.join(SITE, ".nojekyll"), "w").close()
     print(f"完成：{len(ok)} 檔，失敗 {len(failed)} 檔，{time.time() - t0:.0f} 秒")
     for f in failed:
@@ -211,6 +212,61 @@ def write_index():
     assert "static-api.js" in html and "mobile.js" in html and "manifest" in html, "index.html 結構變了"
     open(os.path.join(SITE, "index.html"), "w", encoding="utf-8").write(html)
     dump("version.json", {"v": v})   # 手機打開時比對，版本不同就自動重新載入
+    return v
+
+
+def build_themes(v):
+    """主題版（themes/<名稱>/）：同一套功能和資料，只換外觀，網址是 site/<名稱>/。
+    功能改了，主題版自動跟著變；主題只管顏色、文字、圖示、開場。"""
+    tdir = os.path.join(ROOT, "themes")
+    if not os.path.isdir(tdir):
+        return
+    main_html = open(os.path.join(SITE, "index.html"), encoding="utf-8").read()
+    for name in sorted(os.listdir(tdir)):
+        src = os.path.join(tdir, name)
+        conf_p = os.path.join(src, "theme.json")
+        if not os.path.isfile(conf_p):
+            continue
+        try:
+            conf = json.load(open(conf_p, encoding="utf-8"))
+            dst = os.path.join(SITE, name)
+            shutil.copytree(os.path.join(CORE, "static"), dst, dirs_exist_ok=True)
+            shutil.copytree(os.path.join(ROOT, "web"), dst, dirs_exist_ok=True)
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+            # 電腦版圖表格線是寫死的深色，主題可以用 --grid 換掉
+            ap = os.path.join(dst, "app.js")
+            js = open(ap, encoding="utf-8").read()
+            if "color: '#171b22'" in js:
+                js = js.replace("color: '#171b22'", "color: (css('--grid') || '#171b22')")
+                open(ap, "w", encoding="utf-8").write(js)
+            else:
+                print(f"  主題 {name}：找不到圖表格線設定（不影響，只是格線顏色不變）")
+            html = main_html
+            pre = (f'<script>window.KP_DATA = "../data/"; window.KP_THEME = {json.dumps(name)};</script>\n'
+                   f'<script src="theme-pre.js?v={v}"></script>\n')
+            html = html.replace("<link rel=\"stylesheet\" href=\"style.css", pre + "<link rel=\"stylesheet\" href=\"style.css", 1)
+            html = html.replace(f'<link rel="stylesheet" href="mobile.css?v={v}">',
+                                f'<link rel="stylesheet" href="mobile.css?v={v}">\n<link rel="stylesheet" href="theme.css?v={v}">', 1)
+            html = html.replace(f'<script src="mobile.js?v={v}"></script>',
+                                f'<script src="mobile.js?v={v}"></script>\n<script src="theme.js?v={v}"></script>', 1)
+            html = re.sub(r'<meta name="apple-mobile-web-app-title" content="[^"]*">',
+                          f'<meta name="apple-mobile-web-app-title" content="{conf["short_name"]}">', html)
+            html = re.sub(r'<meta name="theme-color" content="[^"]*">', f'<meta name="theme-color" content="{conf["theme_color"]}">', html)
+            html = re.sub(r'<meta name="apple-mobile-web-app-status-bar-style" content="[^"]*">',
+                          '<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
+            html = re.sub(r"<title>[^<]*</title>", f"<title>{conf['name']}</title>", html)
+            assert "theme.js" in html and "theme.css" in html and "theme-pre.js" in html, "主題 index 組不起來"
+            open(os.path.join(dst, "index.html"), "w", encoding="utf-8").write(html)
+            json.dump({"name": conf["name"], "short_name": conf["short_name"], "start_url": "./", "scope": "./",
+                       "display": "standalone", "background_color": conf["bg_color"], "theme_color": conf["theme_color"],
+                       "lang": "zh-Hant", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+                                                    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}]},
+                      open(os.path.join(dst, "manifest.webmanifest"), "w", encoding="utf-8"), ensure_ascii=False)
+            os.remove(os.path.join(dst, "theme.json"))
+            print(f"主題 {name}：完成 → site/{name}/")
+        except Exception as e:   # 主題壞掉不能拖累主版本
+            traceback.print_exc()
+            print(f"主題 {name} 失敗（主版本不受影響）：{e}")
 
 
 if __name__ == "__main__":

@@ -80,3 +80,14 @@ Settings → Secrets and variables → Actions → **New repository secret**
 
 資料庫之後存在倉庫的 `db` 分支，每天覆蓋，只保留最新一份。
 本機測試（不連網路）：`OFFLINE=1 python build.py`，然後在 `site/` 開一個網頁伺服器。
+
+---
+
+## 主題版（例如貝貝版）
+
+`themes/<名稱>/` 是同一套功能換外觀的版本，網址是 `https://你的帳號.github.io/stock/<名稱>/`。
+
+- 功能、資料、每天的計算**完全共用**：改了主版本，主題版同時更新。
+- 主題只放外觀：`theme.css`（顏色）、`theme.js`（文字、圖示、開場）、`theme-pre.js`（紀錄分開存）、圖片、`theme.json`（App 名稱、顏色）。
+- 主題版的持股、★、移除的股票，和主版本分開存，同一支手機也不會混在一起。
+- 主題壞掉不會影響主版本（建置時會跳過並印出原因）。
