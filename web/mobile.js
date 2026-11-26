@@ -80,6 +80,20 @@
   };
   new MutationObserver(tag).observe(st, { childList: true });
 
+  // 自動更新：手機會把首頁暫存起來，打開時比對伺服器上的版本，不同就換新的
+  const myVer = document.querySelector('meta[name="kp-ver"]')?.content;
+  const checkVer = async () => {
+    try {
+      const r = await fetch('data/version.json?t=' + Date.now(), { cache: 'no-store' });
+      const { v } = await r.json();
+      if (!myVer || !v || v === myVer || sessionStorage.getItem('kp.reloaded') === v) return;
+      sessionStorage.setItem('kp.reloaded', v);
+      location.replace(location.pathname + '?v=' + v);
+    } catch {}
+  };
+  checkVer();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); });
+
   // 加到主畫面後開啟時，回到前景就重新讀一次（資料可能已經更新）
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {

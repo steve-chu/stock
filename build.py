@@ -160,6 +160,7 @@ MOBILE_HEAD = """<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="看盤台">
 <meta name="theme-color" content="#0c0e12">
+<meta name="kp-ver" content="{v}">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="mobile.css?v={v}">
@@ -178,6 +179,7 @@ def write_index():
     html = html.replace("</body>", f'<script src="mobile.js?v={v}"></script>\n</body>', 1)
     assert "static-api.js" in html and "mobile.js" in html and "manifest" in html, "index.html 結構變了"
     open(os.path.join(SITE, "index.html"), "w", encoding="utf-8").write(html)
+    dump("version.json", {"v": v})   # 手機打開時比對，版本不同就自動重新載入
 
 
 if __name__ == "__main__":
