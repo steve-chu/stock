@@ -1,0 +1,75 @@
+/* 手機版：兩個畫面 —「自選股清單」和「個股」。電腦版的樣式不動，這裡只做覆蓋。 */
+:root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); }
+html, body { height: auto; }
+body { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; padding-bottom: var(--safe-b); }
+
+.top { position: sticky; top: 0; z-index: 20; height: auto; min-height: calc(46px + var(--safe-t));
+  padding: var(--safe-t) 12px 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; }
+.brand { gap: 8px; min-width: 0; flex: 1; min-height: 44px; }
+.refresh-all { margin-left: auto !important; }
+.status { flex-basis: 100%; display: block !important; font-size: 11.5px; line-height: 1.5; white-space: normal; padding-bottom: 2px; }
+.status .dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
+.status .at { display: inline !important; }
+.m-back { display: none; border: 0; background: none; color: var(--accent); font-size: 16px; font-weight: 600;
+  padding: 0 6px 0 0; min-height: 44px; align-items: center; gap: 2px; }
+.m-back svg { width: 20px; height: 20px; }
+
+/* 手機唯讀：電腦版才有的功能藏起來 */
+#bell, .asof, #add-form, #add-msg, .wl .rm, .splitter,
+#profile-sel, label:has(#cat-sel), label:has(#rev-rule), p:has(> a[href$="trades.csv"]),
+#core-form button[type=submit] { display: none !important; }
+#core-form textarea, #core-form input { pointer-events: none; opacity: .8; }
+
+.layout { display: block !important; height: auto !important; }
+.side { display: block; border: 0; }
+.panel { overflow: visible; }
+
+/* ---- 清單畫面 ---- */
+body.m-list .analysis { display: none; }
+/* 圖表不能 display:none（隱藏時量到高度 0，副圖比例會壞掉），改成移到畫面外 */
+body.m-list .chart-col { position: fixed; left: -200vw; top: 0; width: 100vw; visibility: hidden; pointer-events: none; }
+body.m-list .watch { border-top: 0; padding: 10px 12px 20px; }
+body.m-list .watch-head h2 { font-size: 15px; margin: 2px 0 0; }
+.wl { margin: 0 -6px; max-height: none !important; overflow: visible; }
+.wl li { grid-template-columns: minmax(0, 1fr) 60px 82px; padding: 10px 8px; min-height: 56px; }
+.wl li.active { box-shadow: none; background: none; }
+.wl li:active { background: var(--panel-2); }
+.wl .nm b { font-size: 15.5px; }
+.wl .px { font-size: 15px; }
+.m-note { color: var(--faint); font-size: 12px; margin: 14px 2px 0; line-height: 1.6; }
+
+/* ---- 個股畫面 ---- */
+body.m-stock .watch { display: none; }
+body.m-stock .m-back { display: inline-flex; }
+body.m-stock .brand > svg, body.m-stock .brand > span { display: none; }
+.chart-col { padding: 10px 12px 6px !important; }
+.quote-head { gap: 6px 12px; }
+.ident { flex-wrap: wrap; row-gap: 4px; }
+.ident h1 { font-size: 21px !important; }
+.price strong { font-size: 24px !important; }
+
+/* 工具列：一排左右滑，不換行佔滿畫面 */
+.toolbar { flex-wrap: nowrap !important; overflow-x: auto; gap: 8px; padding-bottom: 4px; margin: 8px -12px 0; padding-left: 12px; padding-right: 12px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.toolbar::-webkit-scrollbar { display: none; }
+.toolbar > * { flex: none; }
+.chips { flex-wrap: nowrap !important; }
+.seg button, .chips button { min-height: 36px; }
+.legend { font-size: 11.5px; }
+.chart-wrap { height: 60vh !important; min-height: 340px !important; flex: none !important; }
+
+.analysis { padding: 0 12px 24px !important; border-top: 1px solid var(--line); }
+.tabs { margin: 0 -12px 12px !important; top: var(--top-h, 70px) !important; }
+.tabpane { max-height: none !important; overflow: visible !important; }
+.card { padding: 12px; }
+.card table { font-size: 12.5px; }
+.card .tbl-wrap, .card table { max-width: 100%; }
+.card:has(table) { overflow-x: auto; }
+.toast { bottom: calc(20px + var(--safe-b)) !important; left: 12px !important; right: 12px !important; max-width: none !important; }
+
+/* 回測、交易表格：字小一點，太寬就左右滑 */
+.lbt-wrap, .lbt-list, .card:has(> table), .card:has(> .tbl) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tbl { font-size: 12px; }
+.tbl th, .tbl td { padding: 6px 5px !important; }
+.tbl td:first-child, .tbl th:first-child { white-space: nowrap; }
+.bt-btns { flex-wrap: wrap; row-gap: 6px; }

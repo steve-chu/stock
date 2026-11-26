@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的看盤台</title>
+<link rel="stylesheet" href="style.css?v=1.33">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <rect x="3" y="9" width="3" height="9" rx="1" fill="var(--up)"/>
+      <rect x="10.5" y="4" width="3" height="12" rx="1" fill="var(--down)"/>
+      <rect x="18" y="7" width="3" height="10" rx="1" fill="var(--up)"/>
+    </svg>
+    <span>我的看盤台</span>
+    <button class="refresh-all" id="refresh-all" title="更新所有自選股（已有最新收盤的會跳過）">
+      <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      全部更新
+    </button>
+    <button class="icon-btn bell" id="bell" aria-label="桌面通知">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16Zm4 4a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="status" id="status">連線中…</div>
+</header>
+
+<main class="layout">
+  <section class="chart-col">
+    <div class="quote-head">
+      <div class="ident">
+        <h1 id="sym-name">—</h1>
+        <span class="sym-id" id="sym-id"></span>
+        <span class="sym-ind" id="sym-ind"></span>
+        <span class="badge" id="regime-badge" hidden></span>
+        <span class="badge" id="long-badge" hidden></span>
+        <span class="badge cat" id="cat-badge" hidden></span>
+        <button class="badge replay-b" id="replay-badge" hidden title="回到今天"></button>
+      </div>
+      <div class="price">
+        <strong id="px">—</strong>
+        <span id="chg"></span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="seg" id="tfs" role="group" aria-label="K 線週期">
+        <button data-tf="D">日K</button>
+        <button data-tf="W">週K</button>
+        <button data-tf="M">月K</button>
+      </div>
+      <div class="seg" id="ranges" role="group" aria-label="時間範圍">
+        <button data-n="22">1月</button>
+        <button data-n="66">3月</button>
+        <button data-n="132">6月</button>
+        <button data-n="250">1年</button>
+        <button data-n="0">全部</button>
+      </div>
+      <div class="chips" id="mas">
+        <button data-ma="ma5" class="on" style="--c:var(--ma5)">MA5</button>
+        <button data-ma="ma20" class="on" style="--c:var(--ma20)">MA20</button>
+        <button data-ma="ma60" class="on" style="--c:var(--ma60)">MA60</button>
+        <button data-ma="ma120" style="--c:#fb923c">MA120</button>
+        <button data-ma="ma150" style="--c:#38bdf8">MA150</button>
+        <button data-ma="ma200" class="on" style="--c:#f472b6">MA200</button>
+        <button data-ma="ma240" style="--c:#a3e635">MA240</button>
+        <button data-ma="trend_ma" class="on" style="--c:var(--ink)">趨勢均線</button>
+        <button data-ma="plan" class="on" style="--c:var(--accent)">策略價位</button>
+        <button data-ma="cost" class="on" style="--c:var(--cost)">持股成本</button>
+      </div>
+      <div class="seg" id="subs" role="group" aria-label="副圖指標">
+        <button data-sub="kd">KD</button>
+        <button data-sub="macd">MACD</button>
+        <button data-sub="rsi">RSI</button>
+      </div>
+      <div class="asof" title="選一個過去的日期，看當時的分析和之後實際走勢">
+        <label for="asof">回看</label><input type="date" id="asof"><button id="asof-go">看當時</button>
+      </div>
+      <button class="icon-btn" id="refresh" title="重新抓最新資料" aria-label="重新抓最新資料">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div class="legend" id="legend"></div>
+    <div class="chart-wrap">
+      <div id="chart"></div>
+      <div class="chart-msg" id="chart-msg">載入中…</div>
+    </div>
+    <div class="warn" id="warn" hidden></div>
+  </section>
+
+  <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" title="左右拖曳，調整右側欄寬度（雙擊恢復預設）"></div>
+
+  <aside class="side">
+    <section class="panel analysis">
+      <nav class="tabs" id="tabs" role="tablist">
+        <button role="tab" data-tab="fund">股票體質</button>
+        <button role="tab" data-tab="tech">技術分析</button>
+        <button role="tab" data-tab="hold">我的持股</button>
+      </nav>
+      <div class="tabpane" id="tab-tech" data-pane="tech"><p class="empty">從下方自選股選一檔</p></div>
+      <div class="tabpane" id="tab-fund" data-pane="fund" hidden></div>
+      <div class="tabpane" id="tab-hold" data-pane="hold" hidden></div>
+    </section>
+
+    <section class="panel watch">
+      <div class="watch-head">
+        <h2>自選股</h2>
+        <form id="add-form" autocomplete="off">
+          <input id="add-input" list="sugg" placeholder="代號或名稱，例如 2303" aria-label="加入自選股">
+          <datalist id="sugg"></datalist>
+          <button type="submit">加入</button>
+        </form>
+      </div>
+      <p class="add-msg" id="add-msg" hidden></p>
+      <ul class="wl" id="watchlist"></ul>
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
+<script src="app.js?v=1.33"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+core/data/
+site/
+.env
+__pycache__/
+*.pyc
