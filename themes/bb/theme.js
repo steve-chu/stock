@@ -86,16 +86,24 @@
     const randomSpot = (el, s, avoid, farFrom) => {
       const B = box(), pad = 14, top = q.getBoundingClientRect().bottom - B.top + 16, bottom = B.height - 40;
       const w = el.offsetWidth * s, h = el.offsetHeight * s;
-      let best = null;
+      const x0 = pad + w / 2, x1 = Math.max(x0, B.width - pad - w / 2), y0 = top + h / 2, y1 = Math.max(y0, bottom - h / 2);
+      const ok = (cx, cy) => !(avoid && hit([cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2], avoid));
       for (let i = 0; i < 60; i++) {
-        const cx = pad + w / 2 + Math.random() * Math.max(1, B.width - w - pad * 2);
-        const cy = top + h / 2 + Math.random() * Math.max(1, bottom - top - h);
-        const r = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
-        if (avoid && hit(r, avoid)) continue;
+        const cx = x0 + Math.random() * (x1 - x0), cy = y0 + Math.random() * (y1 - y0);
+        if (!ok(cx, cy)) continue;
         if (farFrom && Math.hypot(cx - farFrom[0], cy - farFrom[1]) < 110) continue;
-        best = [cx, cy]; break;
+        return [cx, cy];
       }
-      return best || [B.width / 2, (top + bottom) / 2];
+      // 隨機找不到（按鈕已經很大）：整個範圍逐格找，不重疊又離 avoid 最遠的位置
+      let best = null, bestD = -1;
+      const ac = avoid ? [(avoid[0] + avoid[2]) / 2, (avoid[1] + avoid[3]) / 2] : [B.width / 2, (top + bottom) / 2];
+      for (let i = 0; i <= 8; i++) for (let j = 0; j <= 12; j++) {
+        const cx = x0 + (x1 - x0) * i / 8, cy = y0 + (y1 - y0) * j / 12;
+        if (!ok(cx, cy)) continue;
+        const dd = Math.hypot(cx - ac[0], cy - ac[1]);
+        if (dd > bestD) { bestD = dd; best = [cx, cy]; }
+      }
+      return best || [B.width / 2, y1];
     };
     // 一開始：Yes 在左、No 在右（太窄就上下排）
     requestAnimationFrame(() => {
@@ -127,6 +135,7 @@
       yes.style.transform = `scale(${ys})`;
       const yesTo = randomSpot(yes, ys, rectOf(no, 1));
       place(yes, ...yesTo);
+      if (hit(rectOf(yes, ys), rectOf(no, 1), 0)) place(no, ...randomSpot(no, 1, rectOf(yes, ys)));   // 保險：還是重疊就把 No 挪開
     };
     no.addEventListener('pointerdown', dodge);
     no.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
