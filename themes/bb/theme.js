@@ -41,20 +41,23 @@
 
   function splash(force) {
     if (showing) return;
-    // 每次打開都出現；只有「剛看完、緊接著自動更新重新載入」那一次不再出現
-    if (!force && window.KP_AUTO_RELOADED) {
-      let at = 0; try { at = +localStorage.getItem('bb.splashAt') || 0; } catch {}
-      if (Date.now() - at < 60 * 1000) return;
-    }
+    // 用到一半切回 App 時剛好自動更新 → 不重播；其他（每次打開、打開時換新版）都播
+    if (!force && window.KP_AUTO_RELOADED === 'resume') return;
     showing = true;
     const d = document.createElement('div');
     d.className = 'bb-splash';
-    d.innerHTML = `${SPARK}
-      <div class="bb-stage two"><img class="bb-photo" src="photo.webp" alt="">
-        <div class="bb-sign">making money<br>makes me horny</div></div>
-      <div class="bb-skip">Tap to continue</div>`;
+    d.innerHTML = SPARK;   // 先只放粉紅底蓋住畫面，等版本檢查完再放照片
     document.body.append(d);
-    d.addEventListener('click', () => loyalty(d), { once: true });
+    const ready = force ? Promise.resolve(false)
+      : Promise.race([window.kpVerCheck || Promise.resolve(false), new Promise(r => setTimeout(() => r(false), 2500))]);
+    ready.then(reloading => {
+      if (reloading) return;   // 馬上要換新版：開場留給新版播，這裡只維持粉紅底
+      d.innerHTML = `${SPARK}
+        <div class="bb-stage two"><img class="bb-photo" src="photo.webp" alt="">
+          <div class="bb-sign">making money<br>makes me horny</div></div>
+        <div class="bb-skip">Tap to continue</div>`;
+      d.addEventListener('click', () => loyalty(d), { once: true });
+    });
   }
 
   function finish(d) {

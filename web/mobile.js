@@ -412,24 +412,27 @@
   // 自動更新：手機會把首頁暫存起來，打開時比對伺服器上的版本，不同就換新的
   const myVer = document.querySelector('meta[name="kp-ver"]')?.content;
   // 這次載入是不是「自動更新」造成的（主題的開場用來判斷要不要再播）；網址上的 ?v= 用完就清掉
+  // 記下這次重新載入的原因：'launch'＝剛打開就發現新版、'resume'＝用到一半切回來時更新
   try {
-    const t = +localStorage.getItem('kp.m.autoReload') || 0;
-    window.KP_AUTO_RELOADED = Date.now() - t < 20000;
+    const a = JSON.parse(localStorage.getItem('kp.m.autoReload') || 'null');
+    window.KP_AUTO_RELOADED = a && Date.now() - a.t < 20000 ? a.reason : null;
     localStorage.removeItem('kp.m.autoReload');
-  } catch {}
+  } catch { window.KP_AUTO_RELOADED = null; }
   if (/[?&]v=/.test(location.search)) history.replaceState(history.state, '', location.pathname);
-  const checkVer = async () => {
+  // 回傳 true 表示「要換新版、頁面馬上重新載入」
+  const checkVer = async reason => {
     try {
       const r = await fetch((window.KP_DATA || 'data/') + 'version.json?t=' + Date.now(), { cache: 'no-store' });
       const { v } = await r.json();
-      if (!myVer || !v || v === myVer || sessionStorage.getItem('kp.reloaded') === v) return;
+      if (!myVer || !v || v === myVer || sessionStorage.getItem('kp.reloaded') === v) return false;
       sessionStorage.setItem('kp.reloaded', v);
-      try { localStorage.setItem('kp.m.autoReload', String(Date.now())); } catch {}
+      try { localStorage.setItem('kp.m.autoReload', JSON.stringify({ t: Date.now(), reason })); } catch {}
       location.replace(location.pathname + '?v=' + v);
-    } catch {}
+      return true;
+    } catch { return false; }
   };
-  checkVer();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer(); });
+  window.kpVerCheck = checkVer('launch');   // 主題的開場會等這個結果再決定要不要播
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVer('resume'); });
 
   // 加到主畫面後開啟時，回到前景就重新讀一次（資料可能已經更新）
   let hiddenAt = 0;
