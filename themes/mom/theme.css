@@ -1,0 +1,18 @@
+/* 媽媽版：外觀沿用主版本，只多一頁「安裝說明」（字放大、好讀） */
+body.mom-gated { overflow: hidden; height: 100vh; height: 100dvh; }
+body.mom-gated > :not(.mom-install) { visibility: hidden; }
+.mom-install { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); text-align: center;
+  background: radial-gradient(120% 80% at 50% 0%, #1b2230 0%, var(--bg) 60%); overflow-y: auto; color: var(--ink); }
+.mom-icon { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.mom-install h1 { margin: 8px 0 0; font-size: 30px; font-weight: 800; }
+.mom-sub { margin: 0 0 8px; color: var(--mute); font-size: 18px; }
+.mom-steps { list-style: none; counter-reset: s; margin: 6px 0; padding: 16px 18px; width: min(90vw, 360px); text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; display: grid; gap: 16px; }
+.mom-steps li { counter-increment: s; position: relative; padding-left: 40px; font-size: 18px; line-height: 1.55; }
+.mom-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 15px; font-weight: 800; display: grid; place-items: center; }
+.mom-steps svg { vertical-align: -5px; color: #3b82f6; }
+.mom-steps small { color: var(--mute); font-size: 14.5px; }
+.mom-copy { border: 0; border-radius: 12px; padding: 13px 26px; font-size: 18px; font-weight: 700; color: #fff; background: var(--accent); word-break: break-all; }
+.mom-note { margin-top: 8px; color: var(--faint); font-size: 14px; }

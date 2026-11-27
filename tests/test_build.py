@@ -87,3 +87,15 @@ def test_no_secrets_published(built):
         for f in fs:
             if f.endswith((".js", ".json", ".html", ".css", ".txt")):
                 assert not pat.search(open(os.path.join(dp, f), encoding="utf-8", errors="ignore").read()), f
+
+
+def test_theme_mom(built):
+    h = open(site(built, "mom", "index.html"), encoding="utf-8").read()
+    assert "<title>看盤台</title>" in h and 'KP_DATA = "../data/"' in h
+    assert 'status-bar-style" content="black-translucent"' in h, "深色主題的狀態列要是深色"
+    assert h.index("theme-pre.js") < h.index("style.css")
+    m = json.load(open(site(built, "mom", "manifest.webmanifest"), encoding="utf-8"))
+    assert m["name"] == "看盤台" and m["start_url"] == "./"
+    for f in ("apple-touch-icon.png", "icon-192.png", "theme.js", "theme.css", "theme-pre.js"):
+        assert os.path.exists(site(built, "mom", f)), f
+    assert not os.path.exists(site(built, "mom", "theme.json"))

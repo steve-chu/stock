@@ -305,8 +305,9 @@ def build_themes(v):
             html = re.sub(r'<meta name="apple-mobile-web-app-title" content="[^"]*">',
                           f'<meta name="apple-mobile-web-app-title" content="{conf["short_name"]}">', html)
             html = re.sub(r'<meta name="theme-color" content="[^"]*">', f'<meta name="theme-color" content="{conf["theme_color"]}">', html)
+            bar = conf.get("status_bar", "default")   # 淺色主題用 default，深色用 black-translucent
             html = re.sub(r'<meta name="apple-mobile-web-app-status-bar-style" content="[^"]*">',
-                          '<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
+                          f'<meta name="apple-mobile-web-app-status-bar-style" content="{bar}">', html)
             html = re.sub(r"<title>[^<]*</title>", f"<title>{conf['name']}</title>", html)
             assert "theme.js" in html and "theme.css" in html and "theme-pre.js" in html, "主題 index 組不起來"
             open(os.path.join(dst, "index.html"), "w", encoding="utf-8").write(html)

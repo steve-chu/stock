@@ -352,3 +352,40 @@ def test_bb_landscape_and_overflow(phone, base_url):
     c, s = pg.locator(".chart-col").bounding_box(), pg.locator(".side").bounding_box()
     assert c["x"] < s["x"]
     assert not errs, errs
+
+
+# ---------------- 媽媽版 ----------------
+
+def test_mom_install_page_in_browser(phone, base_url):
+    ctx, pg, errs = phone()
+    pg.goto(base_url + "mom/")
+    pg.locator(".mom-install").wait_for()
+    t = pg.inner_text(".mom-install")
+    assert "加入主畫面" in t and "看盤台" in t
+    assert pg.locator(".mom-icon").evaluate("i => i.complete && i.naturalWidth > 0"), "圖示要載得出來"
+    assert pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+    assert not errs, errs
+
+
+def test_mom_line_inapp_browser(phone, base_url, pw):
+    ctx, pg, errs = phone(user_agent=pw.devices["iPhone 13"]["user_agent"] + " Line/14.0.0")
+    pg.goto(base_url + "mom/")
+    pg.locator(".mom-copy").wait_for()
+    assert "Safari" in pg.inner_text(".mom-install")
+
+
+def test_mom_app_works_and_storage_separate(phone, base_url):
+    ctx, pg, errs = phone(standalone=True)
+    open_list(pg, base_url + "mom/")
+    assert pg.locator(".mom-install").count() == 0, "從主畫面打開不能再出現安裝說明"
+    assert pg.locator("#watchlist li[data-id]").count() == len(stock_ids())
+    sid = stock_ids()[0]
+    open_stock(pg, sid)
+    pg.locator('.m-mode [data-mode="text"]').click()
+    pg.locator('#tabs button[data-tab="hold"]').click()
+    pg.fill("#t-date", "2026-01-05"); pg.fill("#t-price", "1000"); pg.fill("#t-qty", "1")
+    pg.locator("#trade-form [type=submit]").click()
+    pg.wait_for_timeout(600)
+    keys = pg.evaluate("(()=>{const o=[];for(let i=0;i<localStorage.length;i++)o.push(localStorage.key(i));return o})()")
+    assert "mom:kp.m.trades" in keys and not any(k.startswith(("kp.", "bb:")) for k in keys), keys
+    assert not errs, errs
