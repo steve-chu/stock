@@ -48,7 +48,20 @@
   const tax = (amt, sid) => Math.floor(amt * taxRate(sid));
   const sellNet = (sid, p, sh) => { const a = p * sh; return a - fee(a, sh) - tax(a, sid); };
   const tick = p => p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
-  const r2 = x => Math.round(x * 100) / 100;
+  // 和 Python 的 round() 一樣：剛好一半時取偶數（33566.5 → 33566），手機和電腦版的損益才會一模一樣
+  const pyRound = (x, n = 0) => {
+    if (!Number.isFinite(x)) return x;
+    // 用 x 的精確十進位展開判斷要不要進位（Python 也是看精確值），剛好一半才取偶數
+    const neg = x < 0, [ip, fp = ''] = Math.abs(x).toFixed(Math.min(100, n + 40)).split('.');
+    const rest = fp.slice(n);
+    let d = BigInt(ip + fp.slice(0, n));
+    const up = rest[0] > '5' || (rest[0] === '5' && /[1-9]/.test(rest.slice(1)));
+    const tie = rest[0] === '5' && !/[1-9]/.test(rest.slice(1));
+    if (up || (tie && d % 2n === 1n)) d += 1n;
+    const r = Number(d) / 10 ** n;
+    return neg && r !== 0 ? -r : r;
+  };
+  const r2 = x => pyRound(x, 2);
   const feeNote = sid => `手續費 0.1425%（不打折）、證交稅 ${taxRate(sid) * 100}%`;
 
   function replay(sid, list) {
@@ -58,17 +71,17 @@
       if (t.side === 'buy') {
         const f = fee(amt, t.shares);
         shares += t.shares; cost += amt + f;
-        rows.push({ ...t, fee: f, tax: 0, amount: Math.round(amt + f) });
+        rows.push({ ...t, fee: f, tax: 0, amount: pyRound(amt + f) });
       } else {
         if (t.shares > shares) return [null, `${t.date} 賣出 ${t.shares} 股，超過當時持有 ${shares} 股`];
         const avg = cost / shares, f = fee(amt, t.shares), tx = tax(amt, sid);
         const pnl = amt - f - tx - avg * t.shares;
         realized += pnl; cost -= avg * t.shares; shares -= t.shares;
-        rows.push({ ...t, fee: f, tax: tx, amount: Math.round(amt - f - tx), pnl: Math.round(pnl) });
+        rows.push({ ...t, fee: f, tax: tx, amount: pyRound(amt - f - tx), pnl: pyRound(pnl) });
       }
       if (shares === 0) cost = 0;
     }
-    return [{ shares, cost, realized: Math.round(realized), rows }, null];
+    return [{ shares, cost, realized: pyRound(realized), rows }, null];
   }
 
   function compute(sid, list, close, levels) {
@@ -83,7 +96,7 @@
     const scen = (label, price, kind) => {
       if (price == null) return null;
       const net = sellNet(sid, price, s) - cost;
-      return { label, price: r2(price), kind, net: Math.round(net), pct: r2(net / cost * 100), dist: r2((price / close - 1) * 100) };
+      return { label, price: r2(price), kind, net: pyRound(net), pct: r2(net / cost * 100), dist: r2((price / close - 1) * 100) };
     };
     const sc = [...levels.map(x => scen(...x)), scen('損益兩平', be, 'breakeven')].filter(Boolean)
       .sort((a, b) => a.price - b.price || (a.kind !== 'now') - (b.kind !== 'now'));
@@ -101,8 +114,8 @@
       }
     } else if (!above.length) hint = { tone: 'neutral', text: '股價已在所有壓力之上，用停損價或月線移動停利' };
     return Object.assign(out, {
-      shares: s, lots: s / 1000, avg_cost: Math.round(cost / s * 1e4) / 1e4, total_cost: Math.round(cost),
-      breakeven: r2(be), market_value: Math.round(close * s), unrealized: Math.round(netNow),
+      shares: s, lots: s / 1000, avg_cost: pyRound(cost / s, 4), total_cost: pyRound(cost),
+      breakeven: r2(be), market_value: pyRound(close * s), unrealized: pyRound(netNow),
       unrealized_pct: r2(netNow / cost * 100), scenarios: sc, hint,
     });
   }
@@ -128,6 +141,8 @@
   window.kpOrder = { set: ids => localStorage.setItem(OK, JSON.stringify(ids)), all: order };
   let allQuotes = [];
   window.kpAllQuotes = () => allQuotes;
+
+  window.kpPortfolio = { replay, compute, tick };   // 自動測試用：和電腦版 portfolio.py 比對結果
 
   const heldSet = () => {
     const by = {};

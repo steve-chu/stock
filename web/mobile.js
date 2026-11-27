@@ -226,7 +226,8 @@
 
   let confirmed = null;
   wl.addEventListener('click', async e => {
-    if (Date.now() - (+wl.dataset.justSwiped || 0) < 400) { e.stopPropagation(); e.preventDefault(); return; }
+    // 剛滑完時手指放開會順便「點」到那一列，擋掉；但按「移除」鈕不擋
+    if (Date.now() - (+wl.dataset.justSwiped || 0) < 400 && !e.target.closest('[data-rm]')) { e.stopPropagation(); e.preventDefault(); return; }
     const rm = e.target.closest('[data-rm]');
     if (rm) {
       const id = rm.dataset.rm;
@@ -333,9 +334,10 @@
         <div class="m-dlg-btns one"><button type="button" data-close>完成</button></div></div>`;
       document.body.append(d);
       const inp = d.querySelector('.m-search'), ul = d.querySelector('.m-results');
-      const names = await window.kpNames();
+      let names = null;   // 股票名稱表還在下載時也可以先打字，下載好會自動搜尋
       const draw = () => {
         const q = inp.value.trim().toUpperCase();
+        if (q && !names) { ul.innerHTML = '<li class="m-hint">載入股票清單中…</li>'; return; }
         if (!q) { ul.innerHTML = '<li class="m-hint">打字搜尋，可以連續加好幾檔</li>'; return; }
         const shown = new Set([...wl.querySelectorAll('li[data-id]')].map(li => li.dataset.id));
         const hits = names.filter(([id, nm]) => id.startsWith(q) || nm.toUpperCase().includes(q)).slice(0, 30);
@@ -346,6 +348,7 @@
         }).join('') || '<li class="m-hint">找不到，換個關鍵字試試</li>';
       };
       inp.addEventListener('input', draw);
+      window.kpNames().then(n => { names = n; draw(); });
       d.addEventListener('click', e => {
         const b = e.target.closest('[data-add]');
         if (b) { addStock(b.dataset.add, b); return; }

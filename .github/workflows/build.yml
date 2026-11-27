@@ -9,7 +9,7 @@ on:
   workflow_dispatch:           # 也可以在 Actions 頁面手動按「Run workflow」
   push:
     branches: [main]
-    paths: ["stocks.txt", "core/**", "web/**", "themes/**", "build.py", "relay.txt"]
+    paths: ["stocks.txt", "core/**", "web/**", "themes/**", "build.py", "relay.txt", "ondemand.py", "tests/**", ".github/workflows/**"]
 
 permissions:
   contents: write   # 把資料庫存回 db 分支
@@ -21,7 +21,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 改了程式（push、手動執行）先跑全部測試，全過才發佈；排程的每日更新程式沒變，不重測
+  test:
+    if: github.event_name != 'schedule'
+    uses: ./.github/workflows/test.yml
+
   build:
+    needs: test
+    if: ${{ !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
